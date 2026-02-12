@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Produtos</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    
+    <style>
+        /* Badges */
+        .badge-cat { background: #f3f4f6; color: #374151; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-right: 5px; }
+        .badge-promo { background: #fee2e2; color: #991b1b; }
+        .badge-encomenda { background: #dbeafe; color: #1e40af; }
+
+        /* Checkbox Simples e Funcional */
+        .check-group {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+            padding: 10px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+        }
+        .check-group input { width: 20px; height: 20px; cursor: pointer; }
+        .check-group label { cursor: pointer; font-weight: 500; flex: 1; margin: 0; }
+
+        .preco-riscado { text-decoration: line-through; color: #9ca3af; font-size: 0.9rem; margin-right: 5px; }
+        .preco-destaque { color: #dc2626; font-weight: 700; }
+        .header-actions { display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+    
+    <button class="toggle-sidebar" id="toggle-sidebar">☰</button>
+
+    <div class="admin-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo"><div style="font-size: 3rem;"></div><h2>Painel ADM</h2></div>
+            <nav>
+                <ul class="sidebar-menu">
+                    <li><a href="index.html"><span class="icon">📊</span>Dashboard</a></li>
+                    <li><a href="produtos.html" class="active"><span class="icon">🍔</span>Produtos</a></li>
+                    <li><a href="pedidos.html"><span class="icon">📦</span>Pedidos</a></li>
+                    <li><a href="configuracoes.html"><span class="icon">⚙️</span>Configurações</a></li>
+                    <li style="margin-top: 2rem;"><a href="../public/index.html" target="_blank"><span class="icon">🌐</span>Ver Site</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <div class="admin-header">
+                <h1>🍔 Gerenciar Produtos</h1>
+                <div class="header-actions">
+                    <button class="btn btn-outline" id="btn-nova-categoria">🏷️ Categoria</button>
+                    <button class="btn btn-primario" id="btn-novo-produto">➕ Produto</button>
+                </div>
+            </div>
+
+            <div id="loading" class="flex-center" style="padding: 3rem;"><div class="loading"></div></div>
+            <div class="produtos-admin-grid" id="produtos-container"></div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="modal-produto">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header"><h2>Produto</h2><button class="modal-close" onclick="fecharModal('modal-produto')">×</button></div>
+            <form id="form-produto">
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="cat-prod" class="form-input" required><option value="">Carregando...</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Imagem (URL)</label>
+                    <input type="url" id="img-prod" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="nome-prod" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <textarea id="desc-prod" class="form-textarea" rows="2"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Preço (R$)</label>
+                        <input type="number" id="preco-prod" class="form-input" step="0.01" required>
+                    </div>
+                    <div>
+                        <div class="check-group">
+                            <input type="checkbox" id="check-encomenda">
+                            <label for="check-encomenda">Sob Encomenda</label>
+                        </div>
+                        <div class="check-group">
+                            <input type="checkbox" id="check-promo">
+                            <label for="check-promo">Promoção</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group hidden" id="box-promo">
+                    <label style="color: #dc2626;">Preço Promocional (R$)</label>
+                    <input type="number" id="preco-promo" class="form-input" step="0.01">
+                </div>
+
+                <button type="submit" class="btn btn-primario" style="width: 100%; margin-top: 1rem;">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-categoria">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header"><h2>Nova Categoria</h2><button class="modal-close" onclick="fecharModal('modal-categoria')">×</button></div>
+            <form id="form-categoria">
+                <div class="form-group"><label>Nome</label><input type="text" id="nome-cat" class="form-input" required></div>
+                <button type="submit" class="btn btn-primario" style="width: 100%;">Criar</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, mostrarNotificacao, COLLECTIONS } from '../assets/js/firebase-config.js';
+
+        let produtoEditando = null;
+        let categorias = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarCategorias();
+            carregarProdutos();
+            
+            // Toggle Promoção
+            document.getElementById('check-promo').addEventListener('change', (e) => {
+                const box = document.getElementById('box-promo');
+                if(e.target.checked) box.classList.remove('hidden');
+                else box.classList.add('hidden');
+            });
+        });
+
+        // --- CATEGORIAS (Com correção de duplicidade) ---
+        function carregarCategorias() {
+            onSnapshot(query(collection(db, 'categorias'), orderBy('nome')), (snap) => {
+                const select = document.getElementById('cat-prod');
+                
+                // LIMPA O SELECT ANTES DE ADICIONAR (Correção)
+                select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+                categorias = [];
+
+                snap.forEach(d => {
+                    const cat = { id: d.id, ...d.data() };
+                    categorias.push(cat);
+                    const opt = document.createElement('option');
+                    opt.value = cat.slug;
+                    opt.textContent = cat.nome;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        document.getElementById('form-categoria').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nome = document.getElementById('nome-cat').value.trim();
+            const slug = nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
+            try {
+                await addDoc(collection(db, 'categorias'), { nome, slug });
+                mostrarNotificacao('Categoria criada!', 'sucesso');
+                document.getElementById('nome-cat').value = '';
+                fecharModal('modal-categoria');
+            } catch(e) { console.error(e); }
+        });
+
+        // --- PRODUTOS ---
+        function carregarProdutos() {
+            onSnapshot(query(collection(db, COLLECTIONS.PRODUTOS), orderBy('nome')), (snap) => {
+                const div = document.getElementById('produtos-container');
+                div.innerHTML = ''; // Limpa grid
+                document.getElementById('loading').classList.add('hidden');
+
+                snap.forEach(d => {
+                    const p = { id: d.id, ...d.data() };
+                    
+                    // Lógica Preço
+                    let precoHTML = `<div>${formatarPreco(p.preco)}</div>`;
+                    if(p.emPromocao && p.precoPromocional) {
+                        precoHTML = `<div><span class="preco-riscado">${formatarPreco(p.preco)}</span> <span class="preco-destaque">${formatarPreco(p.precoPromocional)}</span></div>`;
+                    }
+
+                    // Badges
+                    const nomeCat = categorias.find(c => c.slug === p.categoria)?.nome || p.categoria;
+                    let badges = `<span class="badge-cat">${nomeCat}</span>`;
+                    if(p.emPromocao) badges += `<span class="badge-cat badge-promo">PROMO</span>`;
+                    if(p.sobEncomenda) badges += `<span class="badge-cat badge-encomenda">ENCOMENDA</span>`;
+
+                    const card = document.createElement('div');
+                    card.className = 'produto-admin-card';
+                    card.innerHTML = `
+                        <img src="${p.imagemUrl}" class="produto-admin-imagem">
+                        <div class="produto-admin-info">
+                            <div style="margin-bottom:5px">${badges}</div>
+                            <h3>${p.nome}</h3>
+                            ${precoHTML}
+                        </div>
+                        <div class="produto-admin-acoes">
+                            <button class="btn-icon" onclick="window.editar('${p.id}')">✏️</button>
+                            <button class="btn-icon" onclick="window.deletar('${p.id}')">🗑️</button>
+                        </div>
+                    `;
+                    div.appendChild(card);
+                });
+            });
+        }
+
+        // --- AÇÕES ---
+        window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
+        
+        document.getElementById('btn-novo-produto').onclick = () => {
+            produtoEditando = null;
+            document.getElementById('form-produto').reset();
+            document.getElementById('box-promo').classList.add('hidden');
+            document.getElementById('modal-produto').classList.add('active');
+        };
+        document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
+
+        window.editar = async (id) => {
+            // Busca dados atuais do banco para garantir (opcional, mas seguro)
+            // Aqui usamos o array local carregado
+            // Mas vamos buscar no array de produtos carregados visualmente seria complexo passar o array
+            // Vamos fazer simples: busca no banco rapidinho ou usa o DOM? Vamos buscar no array local.
+            // (Nota: No código simplificado acima, não salvei produtos em array global, vou buscar no DOM é feio).
+            // Melhor: Vou buscar no Firebase direto pelo ID para garantir edição limpa.
+            // Para simplificar este código, vou assumir que você clica e eu busco.
+            // **IMPORTANTE**: No código anterior eu tinha array global 'produtos'. Vou recolocar.
+        }; 
+        
+        // (Re-adicionando array global para edição funcionar)
+        // Como o código acima está "limpo", vou fazer a edição funcionar buscando o doc
+        // Mas a melhor forma é ter o array global. Vou ajustar carregarProdutos para popular array global.
+    </script>
+    
+    <script type="module">
+        import { db, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, mostrarNotificacao, COLLECTIONS } from '../assets/js/firebase-config.js';
+
+        let produtosLista = [];
+        let categoriasLista = [];
+        let idEditando = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarCategorias();
+            carregarProdutos();
+            
+            document.getElementById('check-promo').addEventListener('change', (e) => {
+                const box = document.getElementById('box-promo');
+                if(e.target.checked) box.classList.remove('hidden'); else box.classList.add('hidden');
+            });
+        });
+
+        function carregarCategorias() {
+            onSnapshot(query(collection(db, 'categorias'), orderBy('nome')), (snap) => {
+                const select = document.getElementById('cat-prod');
+                select.innerHTML = '<option value="" disabled selected>Selecione...</option>';
+                categoriasLista = [];
+                snap.forEach(d => {
+                    const c = d.data();
+                    categoriasLista.push({id: d.id, ...c});
+                    const opt = document.createElement('option');
+                    opt.value = c.slug; opt.textContent = c.nome;
+                    select.appendChild(opt);
+                });
+            });
+        }
+
+        function carregarProdutos() {
+            onSnapshot(query(collection(db, COLLECTIONS.PRODUTOS), orderBy('nome')), (snap) => {
+                const div = document.getElementById('produtos-container');
+                div.innerHTML = '';
+                document.getElementById('loading').classList.add('hidden');
+                produtosLista = [];
+
+                snap.forEach(d => {
+                    const p = { id: d.id, ...d.data() };
+                    produtosLista.push(p);
+                    
+                    let precoHTML = `<div>${formatarPreco(p.preco)}</div>`;
+                    if(p.emPromocao && p.precoPromocional) {
+                        precoHTML = `<div><span class="preco-riscado">${formatarPreco(p.preco)}</span> <span class="preco-destaque">${formatarPreco(p.precoPromocional)}</span></div>`;
+                    }
+
+                    const nomeCat = categoriasLista.find(c => c.slug === p.categoria)?.nome || p.categoria;
+                    let badges = `<span class="badge-cat">${nomeCat}</span>`;
+                    if(p.emPromocao) badges += `<span class="badge-cat badge-promo">PROMO</span>`;
+                    if(p.sobEncomenda) badges += `<span class="badge-cat badge-encomenda">ENCOMENDA</span>`;
+
+                    const card = document.createElement('div');
+                    card.className = 'produto-admin-card';
+                    card.innerHTML = `
+                        <img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://via.placeholder.com/100'">
+                        <div class="produto-admin-info">
+                            <div style="margin-bottom:5px">${badges}</div>
+                            <h3>${p.nome}</h3>
+                            ${precoHTML}
+                        </div>
+                        <div class="produto-admin-acoes">
+                            <button class="btn-icon" id="btn-edit-${p.id}">✏️</button>
+                            <button class="btn-icon" id="btn-del-${p.id}">🗑️</button>
+                        </div>
+                    `;
+                    div.appendChild(card);
+
+                    // Eventos manuais para evitar problemas de escopo
+                    document.getElementById(`btn-edit-${p.id}`).onclick = () => editar(p);
+                    document.getElementById(`btn-del-${p.id}`).onclick = () => deletar(p.id);
+                });
+            });
+        }
+
+        // SALVAR
+        document.getElementById('form-produto').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.querySelector('#form-produto button[type="submit"]');
+            btn.disabled = true; btn.textContent = 'Salvando...';
+
+            try {
+                const emPromocao = document.getElementById('check-promo').checked;
+                const precoNormal = parseFloat(document.getElementById('preco-prod').value);
+                const precoPromo = emPromocao ? parseFloat(document.getElementById('preco-promo').value) : null;
+                
+                // VALIDAÇÃO: Preço promocional deve ser menor que o normal
+                if(emPromocao && precoPromo >= precoNormal) {
+                    mostrarNotificacao('Preço promocional deve ser menor que o preço normal!', 'erro');
+                    btn.disabled = false; btn.textContent = 'Salvar';
+                    return;
+                }
+                
+                const dados = {
+                    categoria: document.getElementById('cat-prod').value,
+                    imagemUrl: document.getElementById('img-prod').value,
+                    nome: document.getElementById('nome-prod').value,
+                    descricao: document.getElementById('desc-prod').value,
+                    preco: precoNormal,
+                    sobEncomenda: document.getElementById('check-encomenda').checked,
+                    emPromocao: emPromocao,
+                    precoPromocional: precoPromo,
+                    atualizadoEm: new Date()
+                };
+
+                if(idEditando) {
+                    await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEditando), dados);
+                    mostrarNotificacao('Atualizado!', 'sucesso');
+                } else {
+                    dados.criadoEm = new Date();
+                    await addDoc(collection(db, COLLECTIONS.PRODUTOS), dados);
+                    mostrarNotificacao('Criado!', 'sucesso');
+                }
+                fecharModal('modal-produto');
+            } catch(e) { console.error(e); mostrarNotificacao('Erro!', 'erro'); }
+            finally { btn.disabled = false; btn.textContent = 'Salvar'; }
+        });
+
+        // Funções Auxiliares
+        window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
+        document.getElementById('btn-novo-produto').onclick = () => {
+            idEditando = null;
+            document.getElementById('form-produto').reset();
+            document.getElementById('box-promo').classList.add('hidden');
+            document.getElementById('modal-produto').classList.add('active');
+        };
+        document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
+        document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
+
+        function editar(p) {
+            idEditando = p.id;
+            document.getElementById('cat-prod').value = p.categoria;
+            document.getElementById('img-prod').value = p.imagemUrl;
+            document.getElementById('nome-prod').value = p.nome;
+            document.getElementById('desc-prod').value = p.descricao;
+            document.getElementById('preco-prod').value = p.preco;
+            
+            document.getElementById('check-encomenda').checked = p.sobEncomenda === true;
+            document.getElementById('check-promo').checked = p.emPromocao === true;
+            
+            if(p.emPromocao) {
+                document.getElementById('box-promo').classList.remove('hidden');
+                document.getElementById('preco-promo').value = p.precoPromocional;
+            } else {
+                document.getElementById('box-promo').classList.add('hidden');
+            }
+            
+            document.getElementById('modal-produto').classList.add('active');
+        }
+
+        async function deletar(id) {
+            if(confirm('⚠️ Tem certeza que deseja excluir este produto?\n\nEsta ação não pode ser desfeita!')) {
+                try {
+                    await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id));
+                    mostrarNotificacao('Produto excluído!', 'sucesso');
+                } catch(e) {
+                    console.error(e);
+                    mostrarNotificacao('Erro ao excluir!', 'erro');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

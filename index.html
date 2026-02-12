@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    
+    <style>
+        /* ESTILOS EXTRAS PARA O DASHBOARD */
+        .card-faturamento {
+            background: #f0fdf4; /* Fundo levemente verde */
+            border: 2px solid #bbf7d0; /* Borda verde */
+            transform: scale(1.02); /* Leve destaque de tamanho */
+            transition: 0.3s;
+        }
+        .card-faturamento:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(22, 163, 74, 0.2);
+        }
+
+        /* Texto Gigante */
+        .valor-gigante {
+            font-size: 3.5rem; /* Bem grande */
+            font-weight: 800;
+            color: #16a34a; /* Verde Dinheiro */
+            letter-spacing: -1px;
+            margin: 10px 0;
+            line-height: 1;
+        }
+
+        .valor-normal {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        
+        .titulo-card {
+            font-size: 1.1rem;
+            color: #6b7280;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Ícone animado */
+        .icon-destaque {
+            font-size: 3rem;
+            background: white;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    
+    <button class="toggle-sidebar" id="toggle-sidebar">☰</button>
+
+    <div class="admin-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+                <img id="admin-logo-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: none;">
+                <div id="admin-logo-text" style="font-size: 3rem;">⟳</div>
+                <h2 id="nome-loja-sidebar">Carregando...</h2>
+            </div>
+            <nav>
+                <ul class="sidebar-menu">
+                    <li><a href="index.html" class="active"><span class="icon">📊</span><span>Dashboard</span></a></li>
+                    <li><a href="produtos.html"><span class="icon">🍔</span><span>Produtos</span></a></li>
+                    <li><a href="pedidos.html"><span class="icon">📦</span><span>Pedidos</span></a></li>
+                    <li><a href="configuracoes.html"><span class="icon">⚙️</span><span>Configurações</span></a></li>
+                    <li style="margin-top: 2rem;"><a href="../public/index.html" target="_blank"><span class="icon">🌐</span><span>Ver Site</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="admin-content">
+            <div class="admin-header">
+                <div>
+                    <h1>📊 Visão Geral</h1>
+                    <p style="color: var(--cor-texto-secundario);">Resumo financeiro de <strong id="data-hoje">hoje</strong></p>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="stat-card card-faturamento">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span class="titulo-card">Faturamento Hoje</span>
+                            <div class="valor-gigante" id="vendas-hoje">R$ 0,00</div>
+                            <small style="color: #15803d; font-weight: 600;">💰 Sinais + Entregas</small>
+                        </div>
+                        <div class="icon-destaque">💵</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span class="titulo-card">Pedidos Novos</span>
+                            <div class="valor-normal" id="pedidos-hoje">0</div>
+                            <small>Criados hoje</small>
+                        </div>
+                        <div class="icon-destaque" style="color: #059669;">📦</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <span class="titulo-card">Fila Pendente</span>
+                            <div class="valor-normal" style="color: #ea580c;" id="pedidos-pendentes">0</div>
+                            <small>Para produzir/entregar</small>
+                        </div>
+                        <div class="icon-destaque">⏳</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 1rem; font-size: 1.5rem;">Últimas Vendas</h3>
+                <div style="background: white; border-radius: 16px; padding: 1.5rem; overflow-x: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
+                        <thead>
+                            <tr style="text-align: left; color: #6b7280; border-bottom: 2px solid #f3f4f6;">
+                                <th style="padding: 1rem;">ID</th>
+                                <th style="padding: 1rem;">Cliente</th>
+                                <th style="padding: 1rem;">Status</th>
+                                <th style="padding: 1rem;">Entrada Financeira</th>
+                                <th style="padding: 1rem;">Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-ultimos-pedidos">
+                            <tr><td colspan="5" style="text-align:center; padding: 3rem; color: #9ca3af;">Carregando dados...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { db, collection, query, onSnapshot, getDocs, formatarPreco, COLLECTIONS } from '../assets/js/firebase-config.js';
+
+        // Configura data
+        const hoje = new Date();
+        const opcoesData = { weekday: 'long', day: 'numeric', month: 'long' };
+        document.getElementById('data-hoje').textContent = hoje.toLocaleDateString('pt-BR', opcoesData);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarDadosDashboard();
+            carregarInfoLoja();
+        });
+
+        async function carregarInfoLoja() {
+            try {
+                const snap = await getDocs(collection(db, COLLECTIONS.CONFIGURACOES));
+                if(!snap.empty) {
+                    const dados = snap.docs[0].data();
+                    if(dados.nome) document.getElementById('nome-loja-sidebar').textContent = dados.nome;
+                    if(dados.logoUrl) {
+                        document.getElementById('admin-logo-text').style.display = 'none';
+                        const img = document.getElementById('admin-logo-img');
+                        img.src = dados.logoUrl;
+                        img.style.display = 'block';
+                    }
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        function carregarDadosDashboard() {
+            const q = query(collection(db, COLLECTIONS.PEDIDOS));
+
+            onSnapshot(q, (snapshot) => {
+                let faturamentoHoje = 0;
+                let qtdPedidosHoje = 0;
+                let qtdPendentes = 0;
+                let ultimosPedidosHTML = '';
+                
+                const pedidosHojeLista = [];
+                const hojeString = new Date().toDateString();
+
+                snapshot.forEach(doc => {
+                    const p = doc.data();
+                    
+                    // Datas importantes
+                    const dataCriacao = p.criadoEm && p.criadoEm.toDate ? p.criadoEm.toDate() : null;
+                    const dataEntrega = p.dataEntregaRealizada && p.dataEntregaRealizada.toDate ? p.dataEntregaRealizada.toDate() : null;
+                    
+                    const foiCriadoHoje = dataCriacao && dataCriacao.toDateString() === hojeString;
+                    const foiEntregueHoje = dataEntrega && dataEntrega.toDateString() === hojeString;
+
+                    // 1. Contagem de Novos (Criados hoje)
+                    if (foiCriadoHoje) {
+                        qtdPedidosHoje++;
+                        pedidosHojeLista.push({ ...p, idReal: p.idDisplay || p.id });
+                    }
+
+                    // 2. Contagem de Pendentes (Status)
+                    if (['recebido', 'em_preparo', 'saiu_entrega'].includes(p.status)) {
+                        qtdPendentes++;
+                    }
+
+                    // 3. LÓGICA FINANCEIRA (CAIXA DO DIA)
+                    
+                    // A) Dinheiro do SINAL (Pedido hoje)
+                    if (foiCriadoHoje) {
+                        const valorEntrada = p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
+                        faturamentoHoje += valorEntrada;
+                    }
+
+                    // B) Dinheiro do RESTANTE (Entregue hoje)
+                    if (p.isEncomenda && foiEntregueHoje && p.status === 'entregue') {
+                        const valorFinal = p.valorRestante || 0;
+                        faturamentoHoje += valorFinal;
+                    }
+                });
+
+                // Ordena e monta tabela
+                pedidosHojeLista.sort((a, b) => b.criadoEm - a.criadoEm);
+
+                pedidosHojeLista.slice(0, 5).forEach(p => {
+                    const statusClass = p.status === 'entregue' ? 'color:#10b981; background:#ecfdf5; padding:4px 8px; border-radius:6px;' : 'color:#f59e0b; background:#fffbeb; padding:4px 8px; border-radius:6px;';
+                    const hora = p.criadoEm.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                    
+                    // Define o texto da coluna financeira
+                    let tipoFin = '';
+                    if(p.isEncomenda) {
+                        tipoFin = `<span style="color:#c2410c; font-weight:600;">Sinal 50%</span>`;
+                    } else {
+                        tipoFin = `<span style="color:#15803d;">Total 100%</span>`;
+                    }
+                    
+                    ultimosPedidosHTML += `
+                        <tr style="border-bottom: 1px solid #f9fafb;">
+                            <td style="padding: 1rem; font-weight:700;">${p.idReal}</td>
+                            <td style="padding: 1rem;">${p.cliente.nome}</td>
+                            <td style="padding: 1rem;"><span style="${statusClass}; font-weight:600; text-transform:capitalize;">${p.status.replace('_', ' ')}</span></td>
+                            <td style="padding: 1rem; font-size:0.9rem;">${tipoFin}</td>
+                            <td style="padding: 1rem; color:#6b7280;">${hora}</td>
+                        </tr>
+                    `;
+                });
+
+                if(pedidosHojeLista.length === 0) {
+                    ultimosPedidosHTML = '<tr><td colspan="5" style="text-align:center; padding: 3rem; color:#9ca3af;">Nenhuma venda hoje ainda.</td></tr>';
+                }
+
+                // Atualiza tela com animação simples
+                const elVendas = document.getElementById('vendas-hoje');
+                elVendas.style.opacity = 0;
+                setTimeout(() => {
+                    elVendas.textContent = formatarPreco(faturamentoHoje);
+                    elVendas.style.opacity = 1;
+                }, 200);
+
+                document.getElementById('pedidos-hoje').textContent = qtdPedidosHoje;
+                document.getElementById('pedidos-pendentes').textContent = qtdPendentes;
+                document.getElementById('tabela-ultimos-pedidos').innerHTML = ultimosPedidosHTML;
+            });
+        }
+
+        document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
+    </script>
+</body>
+</html>
