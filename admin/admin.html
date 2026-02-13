@@ -147,7 +147,7 @@
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.2</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.3</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -320,13 +320,19 @@
                 <div class="form-group"><label>Imagem URL</label><input type="url" id="img-prod" class="form-input" required></div>
                 <div class="form-group"><label>Nome</label><input type="text" id="nome-prod" class="form-input" required></div>
                 <div class="form-group"><label>Preço</label><input type="number" id="preco-prod" class="form-input" step="0.01" required></div>
+                
+                <div class="form-group" id="box-estoque">
+                    <label>Quantidade em Estoque (0 = Esgotado)</label>
+                    <input type="number" id="estoque-prod" class="form-input" min="0" placeholder="Ex: 50 (Vazio = Infinito)">
+                </div>
+
                 <div class="form-group">
                     <label>Ingredientes / Detalhes</label>
                     <textarea id="detalhes-prod" class="form-textarea" rows="3" placeholder="Ex: Pão brioche, blend 180g, queijo cheddar, bacon..."></textarea>
                 </div>
                 <div class="check-group"><input type="checkbox" id="check-promo"><label>Promoção</label></div>
                 <div class="form-group hidden" id="box-promo"><input type="number" id="preco-promo" class="form-input" placeholder="Preço Promo"></div>
-                <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda</label></div>
+                <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda (Não usa estoque)</label></div>
                 <button type="submit" class="btn btn-primario">Salvar</button>
             </form>
         </div>
@@ -375,10 +381,10 @@
             const inputSenha = document.getElementById('senha-login');
             if (inputSenha.type === 'password') {
                 inputSenha.type = 'text';
-                this.textContent = '🙈'; // Muda o ícone quando a senha está visível
+                this.textContent = '🙈';
             } else {
                 inputSenha.type = 'password';
-                this.textContent = '👁️'; // Volta o ícone original
+                this.textContent = '👁️';
             }
         });
 
@@ -456,7 +462,6 @@
             if(el) el.classList.add('active');
             if(tela === 'produtos' && produtosLista.length === 0) carregarProdutos();
             
-            // FECHA O MENU NO MOBILE AUTOMATICAMENTE
             document.getElementById('sidebar').classList.remove('open');
         };
 
@@ -592,7 +597,6 @@
                      enderecoTexto = `${p.endereco.logradouro||'Rua'}, ${p.endereco.numero||'SN'} - ${p.endereco.bairro||''}`;
                 }
                 
-                // Mostrar Cupom se existir
                 let cupomHtml = '';
                 if (p.cupom) {
                     cupomHtml = `<div style="margin-top:5px; color:#16a34a; font-weight:600; font-size:0.9rem;">🎫 Cupom: ${p.cupom.codigo} (-${formatarPreco(p.cupom.desconto)})</div>`;
@@ -636,6 +640,7 @@
             });
             document.getElementById('form-produto').onsubmit = async (e) => {
                 e.preventDefault();
+                const vEstoque = document.getElementById('estoque-prod').value;
                 const d = {
                     categoria: document.getElementById('cat-prod').value,
                     imagemUrl: document.getElementById('img-prod').value,
@@ -644,7 +649,8 @@
                     detalhes: document.getElementById('detalhes-prod').value, 
                     sobEncomenda: document.getElementById('check-encomenda').checked,
                     emPromocao: document.getElementById('check-promo').checked,
-                    precoPromocional: parseFloat(document.getElementById('preco-promo').value) || null
+                    precoPromocional: parseFloat(document.getElementById('preco-promo').value) || null,
+                    estoque: vEstoque ? parseInt(vEstoque) : null // Salva null se vazio
                 };
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
                 else await addDoc(collection(db, COLLECTIONS.PRODUTOS), {...d, criadoEm: new Date()});
@@ -660,7 +666,29 @@
                 snap.forEach(d => {
                     const p = {id:d.id, ...d.data()}; produtosLista.push(p);
                     const card = document.createElement('div'); card.className = 'produto-admin-card';
-                    card.innerHTML = `<img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'"><div class="produto-admin-info"><h3>${p.nome}</h3><div>${formatarPreco(p.preco)}</div></div><div class="produto-admin-acoes"><button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button><button class="btn-icon" onclick="window.delProd('${p.id}')">🗑️</button></div>`;
+                    
+                    // Exibição do estoque no card do admin
+                    let infoEstoque = '';
+                    if (!p.sobEncomenda) {
+                        if (p.estoque !== null && p.estoque !== undefined) {
+                            const corEstoque = p.estoque > 0 ? '#10b981' : '#ef4444';
+                            infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:${corEstoque};">Estoque: ${p.estoque}</div>`;
+                        } else {
+                            infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:#6b7280;">Estoque: Ilimitado</div>`;
+                        }
+                    }
+
+                    card.innerHTML = `
+                    <img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'">
+                    <div class="produto-admin-info">
+                        <h3>${p.nome}</h3>
+                        <div>${formatarPreco(p.preco)}</div>
+                        ${infoEstoque}
+                    </div>
+                    <div class="produto-admin-acoes">
+                        <button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button>
+                        <button class="btn-icon" onclick="window.delProd('${p.id}')">🗑️</button>
+                    </div>`;
                     div.appendChild(card);
                 });
             });
@@ -670,14 +698,19 @@
             document.getElementById('nome-prod').value = p.nome; document.getElementById('cat-prod').value = p.categoria;
             document.getElementById('img-prod').value = p.imagemUrl; document.getElementById('preco-prod').value = p.preco;
             document.getElementById('detalhes-prod').value = p.detalhes || '';
+            document.getElementById('estoque-prod').value = (p.estoque !== null && p.estoque !== undefined) ? p.estoque : '';
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
+            document.getElementById('check-encomenda').checked = p.sobEncomenda;
+            
+            // Controle visual do box de estoque
+            document.getElementById('box-estoque').classList.toggle('hidden', p.sobEncomenda);
+
             document.getElementById('modal-produto').classList.add('active');
         };
         window.delProd = async (id) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id)); };
 
         // --- CUPONS ---
         function initCupons() {
-            // Listener para carregar cupons
             onSnapshot(collection(db, 'cupons'), (snap) => {
                 const tbody = document.getElementById('lista-cupons');
                 tbody.innerHTML = '';
@@ -708,7 +741,6 @@
                 });
             });
 
-            // Criar Novo Cupom
             document.getElementById('btn-novo-cupom').onclick = () => document.getElementById('modal-cupom').classList.add('active');
 
             document.getElementById('form-cupom').onsubmit = async (e) => {
@@ -721,26 +753,32 @@
                 if (!codigo || !valor || !validade || !limite) return window.mostrarNotificacao('Preencha tudo', 'erro');
 
                 try {
-                    await addDoc(collection(db, 'cupons'), {
-                        codigo, valor, validade, limite, usos: 0, criadoEm: new Date()
-                    });
+                    await addDoc(collection(db, 'cupons'), { codigo, valor, validade, limite, usos: 0, criadoEm: new Date() });
                     window.mostrarNotificacao('Cupom criado!', 'sucesso');
                     window.fecharModal('modal-cupom');
                     document.getElementById('form-cupom').reset();
-                } catch(e) {
-                    console.error(e);
-                    window.mostrarNotificacao('Erro ao criar cupom', 'erro');
-                }
+                } catch(e) { console.error(e); window.mostrarNotificacao('Erro ao criar cupom', 'erro'); }
             };
         }
         window.delCupom = async (id) => { if(confirm('Excluir cupom?')) await deleteDoc(doc(db, 'cupons', id)); };
 
         // Utils UI
         window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
-        document.getElementById('btn-novo-produto').onclick = () => { idEdit = null; document.getElementById('form-produto').reset(); document.getElementById('detalhes-prod').value = ''; document.getElementById('modal-produto').classList.add('active'); };
+        document.getElementById('btn-novo-produto').onclick = () => { 
+            idEdit = null; 
+            document.getElementById('form-produto').reset(); 
+            document.getElementById('detalhes-prod').value = ''; 
+            document.getElementById('box-estoque').classList.remove('hidden'); // Garante que aparece no novo
+            document.getElementById('modal-produto').classList.add('active'); 
+        };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
         document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('check-promo').onchange = (e) => document.getElementById('box-promo').classList.toggle('hidden', !e.target.checked);
+        
+        // Esconder estoque se for encomenda
+        document.getElementById('check-encomenda').onchange = (e) => {
+            document.getElementById('box-estoque').classList.toggle('hidden', e.target.checked);
+        };
 
     </script>
 </body>
