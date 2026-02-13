@@ -34,7 +34,6 @@
             .sidebar-desktop { display: block; background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; border: 1px solid #e5e7eb; }
             .btn-flutuante { display: none !important; }
             .produtos-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important; }
-            /* Ajuste Whats no PC */
             .whats-float { bottom: 20px !important; }
         }
 
@@ -94,6 +93,13 @@
         /* Botão Novo Endereço */
         .btn-novo-end { background: none; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; color: #666; cursor: pointer; float: right; }
         
+        /* Estilo para a caixa de cupom */
+        .cupom-box { display: flex; gap: 8px; margin-bottom: 10px; }
+        .cupom-box input { flex: 1; text-transform: uppercase; }
+        .cupom-msg { font-size: 0.85rem; margin-bottom: 15px; font-weight: 600; }
+        .cupom-msg.sucesso { color: #16a34a; }
+        .cupom-msg.erro { color: #ef4444; }
+
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
         .toast { background: #333; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; animation: fadeIn 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
         .toast.sucesso { background: #10b981; } .toast.erro { background: #ef4444; }
@@ -211,8 +217,16 @@
             </div>
 
             <div class="checkout-card">
-                <div class="resumo-linha"><span>Subtotal (Sem descontos)</span> <span id="chk-subtotal">R$ 0,00</span></div>
+                <h3 style="font-size: 1rem; margin-bottom: 10px;">🎫 Cupom de Desconto</h3>
+                <div class="cupom-box">
+                    <input type="text" id="input-cupom" class="form-input" placeholder="Código">
+                    <button class="btn" onclick="aplicarCupom()" style="background: #333; color: white; padding: 0 20px;">Aplicar</button>
+                </div>
+                <div id="msg-cupom" class="cupom-msg"></div>
+
+                <div class="resumo-linha"><span>Subtotal</span> <span id="chk-subtotal">R$ 0,00</span></div>
                 <div class="resumo-linha resumo-desconto" id="chk-box-desc"><span>Descontos</span> <span id="chk-desconto">- R$ 0,00</span></div>
+                <div class="resumo-linha resumo-desconto" id="chk-box-cupom" class="hidden"><span>Desconto Cupom</span> <span id="chk-valor-cupom">- R$ 0,00</span></div>
                 <div class="resumo-linha"><span>Entrega</span> <span id="chk-entrega">R$ 0,00</span></div>
                 <div class="resumo-total">
                     <span id="lbl-total">Total</span>
@@ -301,12 +315,17 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        import { db, collection, getDocs, getDoc, doc, addDoc, onSnapshot, query, orderBy, formatarPreco, mostrarNotificacao, buscarEnderecoPorCEP, validarCEP, COLLECTIONS } from '../assets/js/firebase-config.js';
+        // Adicionei 'increment' para uso no firebase-config.js ou uso direto
+        import { db, collection, getDocs, getDoc, doc, addDoc, updateDoc, onSnapshot, query, where, orderBy, formatarPreco, mostrarNotificacao, buscarEnderecoPorCEP, validarCEP, COLLECTIONS } from '../assets/js/firebase-config.js';
+        import { increment } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"; // Import direto para incrementar
 
         let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
         let produtos = [], categorias = [], configLoja = {};
         let prodSel = null, qtdSel = 1, tipoEntrega = 'entrega', pagSel = '';
         let rastreioListeners = [];
+        
+        // --- VARIAVEL DO CUPOM ---
+        let cupomAplicado = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
             initListeners();
@@ -398,22 +417,19 @@
             const precoHtml = (p.emPromocao && p.precoPromocional) ? `<span class="preco-antigo">${formatarPreco(p.preco)}</span> <span class="preco-novo">${formatarPreco(preco)}</span>` : formatarPreco(preco);
             const pode = configLoja.lojaAberta || p.sobEncomenda;
             if(!pode) div.style.opacity = '0.6';
-            // Placeholder corrigido
             div.innerHTML = `${p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : ''}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3><p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${pode ? '+' : '🔒'}</button></div></div>`;
             return div;
         }
 
-        // --- CARRINHO LOGIC (COM PREÇO NORMAL vs PROMO + DETALHES) ---
+        // --- CARRINHO LOGIC ---
         window.abrirModalProduto = (p) => {
             const pode = configLoja.lojaAberta || p.sobEncomenda;
             if(!pode) return mostrarNotificacao('Loja fechada no momento.', 'erro');
             prodSel = p; qtdSel = 1;
             
             document.getElementById('md-titulo').textContent = p.nome;
-            // Se houver descrição, mostra. Se não, limpa.
             document.getElementById('md-desc').textContent = p.descricao || '';
             
-            // LÓGICA DE EXIBIÇÃO DE DETALHES (INGREDIENTES)
             const boxDetalhes = document.getElementById('md-detalhes-container');
             const txtDetalhes = document.getElementById('md-detalhes');
             if (p.detalhes && p.detalhes.trim() !== "") {
@@ -447,7 +463,6 @@
             const precoNormal = prodSel.preco;
             const precoFinal = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
 
-            // Salva qtd (novo padrão)
             carrinho.push({ 
                 id: prodSel.id, 
                 nome: prodSel.nome, 
@@ -464,7 +479,6 @@
         function salvarCarrinho() { localStorage.setItem('carrinho', JSON.stringify(carrinho)); atualizarCarrinhoUI(); }
 
         function atualizarCarrinhoUI() {
-            // CORREÇÃO: Fallback para 'qtd' ou 'quantidade'
             const subtotalNormal = carrinho.reduce((a,b) => a + (b.precoNormal * (b.qtd || b.quantidade || 1)), 0);
             const totalReal = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
             const desconto = subtotalNormal - totalReal;
@@ -511,12 +525,64 @@
         window.mudarEntrega = (t) => { tipoEntrega = t; document.getElementById('opt-entrega').className = `entrega-option ${t==='entrega'?'selected':''}`; document.getElementById('opt-retirada').className = `entrega-option ${t==='retirada'?'selected':''}`; if(t==='entrega') { document.getElementById('box-endereco').classList.remove('hidden'); document.getElementById('box-retirada').classList.add('hidden'); } else { document.getElementById('box-endereco').classList.add('hidden'); document.getElementById('box-retirada').classList.remove('hidden'); } atualizarResumoCheckout(); };
         window.selPag = (t, el) => { pagSel = t; document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('box-pix').classList.add('hidden'); document.getElementById('box-dinheiro').classList.add('hidden'); if(t==='pix') { document.getElementById('box-pix').classList.remove('hidden'); atualizarResumoCheckout(); } else if(t==='dinheiro') { document.getElementById('box-dinheiro').classList.remove('hidden'); } };
 
+        // --- LÓGICA DE CUPONS ---
+        window.aplicarCupom = async () => {
+            const input = document.getElementById('input-cupom');
+            const codigo = input.value.trim().toUpperCase();
+            const msg = document.getElementById('msg-cupom');
+            
+            if(!codigo) return;
+
+            msg.textContent = 'Verificando...'; msg.className = 'cupom-msg';
+
+            try {
+                // Busca cupom no banco
+                const q = query(collection(db, 'cupons'), where('codigo', '==', codigo));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    msg.textContent = 'Cupom inválido ou não encontrado.'; msg.className = 'cupom-msg erro';
+                    cupomAplicado = null;
+                } else {
+                    const docCupom = snap.docs[0];
+                    const dados = docCupom.data();
+                    const hoje = new Date().toISOString().split('T')[0];
+
+                    if (dados.validade < hoje) {
+                        msg.textContent = 'Este cupom venceu.'; msg.className = 'cupom-msg erro';
+                        cupomAplicado = null;
+                    } else if (dados.usos >= dados.limite) {
+                        msg.textContent = 'Limite de uso deste cupom atingido.'; msg.className = 'cupom-msg erro';
+                        cupomAplicado = null;
+                    } else {
+                        // Cupom Válido!
+                        cupomAplicado = { id: docCupom.id, ...dados };
+                        msg.textContent = `Desconto de ${formatarPreco(dados.valor)} aplicado!`;
+                        msg.className = 'cupom-msg sucesso';
+                    }
+                }
+                atualizarResumoCheckout();
+
+            } catch(e) {
+                console.error(e);
+                msg.textContent = 'Erro ao validar cupom.'; msg.className = 'cupom-msg erro';
+            }
+        };
+
         function atualizarResumoCheckout() {
             const subtotalNormal = carrinho.reduce((a,b) => a + (b.precoNormal * (b.qtd || b.quantidade || 1)), 0);
-            const totalReal = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
-            const desconto = subtotalNormal - totalReal;
+            const totalProdutos = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
+            const descontoProdutos = subtotalNormal - totalProdutos;
+            
+            let descontoCupom = 0;
+            if (cupomAplicado) {
+                descontoCupom = cupomAplicado.valor;
+                // Não deixa o total ficar negativo
+                if (descontoCupom > totalProdutos) descontoCupom = totalProdutos;
+            }
+
             const taxa = tipoEntrega === 'entrega' ? (configLoja.taxaEntrega || 0) : 0;
-            const totalFinal = totalReal + taxa;
+            const totalFinal = (totalProdutos - descontoCupom) + taxa;
 
             document.getElementById('lista-resumo-checkout').innerHTML = carrinho.map(i => {
                 const q = i.qtd || i.quantidade || 1;
@@ -527,11 +593,20 @@
             document.getElementById('chk-entrega').textContent = taxa === 0 ? 'Grátis' : formatarPreco(taxa);
             document.getElementById('chk-total').textContent = formatarPreco(totalFinal);
 
-            if(desconto > 0) {
+            // Exibir descontos
+            if(descontoProdutos > 0) {
                 document.getElementById('chk-box-desc').classList.remove('hidden');
-                document.getElementById('chk-desconto').textContent = `- ${formatarPreco(desconto)}`;
+                document.getElementById('chk-desconto').textContent = `- ${formatarPreco(descontoProdutos)}`;
             } else {
                 document.getElementById('chk-box-desc').classList.add('hidden');
+            }
+
+            // Exibir desconto do cupom
+            if (cupomAplicado) {
+                document.getElementById('chk-box-cupom').classList.remove('hidden');
+                document.getElementById('chk-valor-cupom').textContent = `- ${formatarPreco(descontoCupom)}`;
+            } else {
+                document.getElementById('chk-box-cupom').classList.add('hidden');
             }
 
             const temEnc = carrinho.some(i => i.sobEncomenda);
@@ -553,7 +628,15 @@
             if(!pagSel) return mostrarNotificacao('Selecione pagamento!', 'erro');
             if(tipoEntrega === 'entrega' && !document.getElementById('endereco').value) return mostrarNotificacao('Endereço incompleto!', 'erro');
 
-            const total = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0) + (tipoEntrega==='entrega'?(configLoja.taxaEntrega||0):0);
+            // Recalcula totais para segurança
+            const totalProdutos = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
+            let descCupom = 0;
+            if(cupomAplicado) {
+                descCupom = cupomAplicado.valor;
+                if(descCupom > totalProdutos) descCupom = totalProdutos;
+            }
+            const total = (totalProdutos - descCupom) + (tipoEntrega==='entrega'?(configLoja.taxaEntrega||0):0);
+            
             const enc = carrinho.some(i=>i.sobEncomenda);
             
             // Salvar Endereço no Cache
@@ -576,11 +659,23 @@
                 endereco: tipoEntrega==='entrega' ? dadosSalvar : null,
                 itens: carrinho, total: total, isEncomenda: enc, valorSinal: enc?total/2:total, valorRestante: enc?total/2:0, saldoDevedor: enc,
                 pagamento: { forma: pagSel, troco: document.getElementById('troco').value, status: enc?'parcial_sinal':'pendente' },
-                status: 'recebido', criadoEm: new Date(), atualizadoEm: new Date()
+                status: 'recebido', criadoEm: new Date(), atualizadoEm: new Date(),
+                // Dados do cupom no pedido
+                cupom: cupomAplicado ? { codigo: cupomAplicado.codigo, desconto: descCupom } : null
             };
 
             try {
+                // 1. Salva o pedido
                 const ref = await addDoc(collection(db, COLLECTIONS.PEDIDOS), pedido);
+                
+                // 2. Incrementa uso do cupom se foi usado
+                if (cupomAplicado) {
+                    const cupomRef = doc(db, 'cupons', cupomAplicado.id);
+                    await updateDoc(cupomRef, {
+                        usos: increment(1)
+                    });
+                }
+
                 let meus = JSON.parse(localStorage.getItem('meus_pedidos_ids'))||[]; meus.push(ref.id); localStorage.setItem('meus_pedidos_ids', JSON.stringify(meus));
                 localStorage.removeItem('carrinho'); carrinho = [];
                 
@@ -605,6 +700,10 @@
                 if(i.agendamento) msg += `   📅 *Agendado:* ${new Date(i.agendamento.data+'T00:00:00').toLocaleDateString()} às ${i.agendamento.hora}\n`;
             });
 
+            if (p.cupom) {
+                msg += `\n🎫 *Cupom:* ${p.cupom.codigo} (-${formatarPreco(p.cupom.desconto)})`;
+            }
+
             msg += `\n💰 *Total:* ${formatarPreco(p.total)}`;
             if(p.isEncomenda) {
                 msg += `\n🔵 *Sinal:* ${formatarPreco(p.valorSinal)}`;
@@ -625,13 +724,12 @@
             }
         }
 
-        // --- RASTREIO TEMPO REAL (CORRIGIDO) ---
+        // --- RASTREIO TEMPO REAL ---
         window.abrirRastreio = async () => {
             document.getElementById('modal-rastreio').classList.add('active');
             const lista = document.getElementById('lista-pedidos-rastreio');
             const ids = JSON.parse(localStorage.getItem('meus_pedidos_ids')) || [];
 
-            // Limpa listeners antigos para não duplicar conexões e memória
             rastreioListeners.forEach(unsub => unsub());
             rastreioListeners = [];
 
@@ -640,30 +738,23 @@
                 return;
             }
 
-            // Limpa a lista antes de começar a adicionar os itens
             lista.innerHTML = '';
-
-            // Pega os 5 últimos
             const ultimos = ids.slice(-5).reverse();
 
             ultimos.forEach(pid => {
-                // Cria o elemento visual (placeholder)
                 const div = document.createElement('div');
                 div.id = `ped-${pid}`;
                 div.style.marginBottom = '10px';
-                // Feedback visual imediato enquanto o Firebase busca
                 div.innerHTML = '<div style="padding:15px; border:1px solid #eee; border-radius:12px; text-align:center; color:#999;">Carregando status...</div>';
                 
                 lista.appendChild(div);
 
-                // Conecta no Firebase
                 const unsub = onSnapshot(doc(db, COLLECTIONS.PEDIDOS, pid), (docSnap) => {
                     if (docSnap.exists()) {
                         const d = docSnap.data();
                         const cor = d.status === 'entregue' ? '#10b981' : (d.status === 'recebido' ? '#3b82f6' : '#f59e0b');
                         const statusNome = d.status.replace('_', ' ').toUpperCase();
 
-                        // Atualiza DIRETAMENTE a div criada (mais seguro)
                         div.innerHTML = `
                             <div style="background:#f9fafb; padding:15px; border-radius:12px; border:1px solid #eee; border-left: 5px solid ${cor};">
                                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -676,7 +767,6 @@
                             </div>
                         `;
                     } else {
-                        // Se o pedido não existir mais no banco
                         div.innerHTML = '<div style="padding:10px; color:red; text-align:center;">Pedido não encontrado</div>';
                     }
                 });
