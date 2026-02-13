@@ -46,7 +46,6 @@
         /* --- PEDIDOS --- */
         .pedido-card { background: white; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #ccc; transition: all 0.3s ease; cursor: pointer; position: relative; z-index: 1; }
         
-        /* Z-INDEX ALTO CORRIGIDO */
         .pedido-card.z-index-alto { z-index: 100 !important; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: scale(1.01); }
         
         .pedido-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); transform: translateY(-2px); }
@@ -84,7 +83,7 @@
         .btn-excluir:hover { opacity: 1; transform: scale(1.1); }
         .alerta-cobranca { background: #fff7ed; color: #c2410c; padding: 8px; font-size: 0.9rem; border-radius: 6px; margin-top: 10px; font-weight: bold; border: 1px dashed #f97316; display: flex; align-items: center; gap: 5px; }
 
-        /* --- PRODUTOS & CONFIG --- */
+        /* --- PRODUTOS & CONFIG & CUPONS --- */
         .badge-cat { background: #f3f4f6; color: #374151; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; margin-right: 5px; }
         .badge-promo { background: #fee2e2; color: #991b1b; }
         .badge-encomenda { background: #dbeafe; color: #1e40af; }
@@ -113,6 +112,13 @@
         .btn-primario { background-color: #2563eb; color: white; width: 100%; }
         .btn-primario:hover { background-color: #1d4ed8; }
 
+        /* Estilo Tabela Cupons */
+        .tabela-admin { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tabela-admin th, .tabela-admin td { padding: 1rem; text-align: left; border-bottom: 1px solid #f3f4f6; }
+        .tabela-admin th { background: #f9fafb; font-weight: 600; color: #4b5563; }
+        .status-ativo { color: #10b981; font-weight: 600; background: #dcfce7; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
+        .status-inativo { color: #ef4444; font-weight: 600; background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
+
         /* --- TOAST --- */
         #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
         .toast { padding: 12px 24px; border-radius: 8px; color: white; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out; }
@@ -132,14 +138,16 @@
                 <div class="form-group">
                     <input type="email" id="email-login" class="form-input" placeholder="E-mail" required>
                 </div>
-                <div class="form-group">
-                    <input type="password" id="senha-login" class="form-input" placeholder="Senha" required>
+                <div class="form-group" style="position: relative;">
+                    <input type="password" id="senha-login" class="form-input" placeholder="Senha" required style="padding-right: 40px;">
+                    <button type="button" id="toggle-senha" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #6b7280; padding: 0;">👁️</button>
                 </div>
+                
                 <button type="submit" class="btn btn-primario" id="btn-login">Entrar no Painel</button>
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.0</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.2</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -156,6 +164,7 @@
                     <li><a href="#" onclick="window.navegar('dashboard', this)" class="menu-link active"><span class="icon">📊</span><span>Dashboard</span></a></li>
                     <li><a href="#" onclick="window.navegar('produtos', this)" class="menu-link"><span class="icon">🍔</span><span>Produtos</span></a></li>
                     <li><a href="#" onclick="window.navegar('pedidos', this)" class="menu-link"><span class="icon">📦</span><span>Pedidos</span></a></li>
+                    <li><a href="#" onclick="window.navegar('cupons', this)" class="menu-link"><span class="icon">🎫</span><span>Cupons</span></a></li>
                     <li><a href="#" onclick="window.navegar('configuracoes', this)" class="menu-link"><span class="icon">⚙️</span><span>Configurações</span></a></li>
                     <li style="margin-top: 1rem; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
                         <a href="#" onclick="window.fazerLogout()" class="menu-link" style="color: #ef4444;"><span class="icon">🚪</span><span>Sair</span></a>
@@ -254,6 +263,32 @@
                 <div id="lista-pedidos"></div>
             </section>
 
+            <section id="view-cupons" class="view-section">
+                <div class="admin-header">
+                    <h1>🎫 Cupons de Desconto</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primario" id="btn-novo-cupom">➕ Novo Cupom</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="tabela-admin">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Valor (R$)</th>
+                                <th>Validade</th>
+                                <th>Usos</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-cupons">
+                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
             <section id="view-configuracoes" class="view-section">
                 <div class="admin-header"><h1>⚙️ Configurações</h1></div>
                 <div class="switch-container">
@@ -285,12 +320,10 @@
                 <div class="form-group"><label>Imagem URL</label><input type="url" id="img-prod" class="form-input" required></div>
                 <div class="form-group"><label>Nome</label><input type="text" id="nome-prod" class="form-input" required></div>
                 <div class="form-group"><label>Preço</label><input type="number" id="preco-prod" class="form-input" step="0.01" required></div>
-                
                 <div class="form-group">
                     <label>Ingredientes / Detalhes</label>
                     <textarea id="detalhes-prod" class="form-textarea" rows="3" placeholder="Ex: Pão brioche, blend 180g, queijo cheddar, bacon..."></textarea>
                 </div>
-
                 <div class="check-group"><input type="checkbox" id="check-promo"><label>Promoção</label></div>
                 <div class="form-group hidden" id="box-promo"><input type="number" id="preco-promo" class="form-input" placeholder="Preço Promo"></div>
                 <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda</label></div>
@@ -306,14 +339,50 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-cupom">
+        <div class="modal">
+            <div class="modal-header"><h2>Novo Cupom</h2><button class="modal-close" onclick="window.fecharModal('modal-cupom')">×</button></div>
+            <form id="form-cupom">
+                <div class="form-group">
+                    <label>Código do Cupom</label>
+                    <input type="text" id="cupom-codigo" class="form-input" placeholder="Ex: DESCONTO10" style="text-transform:uppercase;" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor do Desconto (R$)</label>
+                    <input type="number" id="cupom-valor" class="form-input" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Validade (Data Limite)</label>
+                    <input type="date" id="cupom-validade" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>Limite de Usos (Qtd Total)</label>
+                    <input type="number" id="cupom-limite" class="form-input" value="100" required>
+                </div>
+                <button type="submit" class="btn btn-primario">Criar Cupom</button>
+            </form>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <script type="module">
         import { db, auth, collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, COLLECTIONS } from '../assets/js/firebase-config.js';
         import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
+        // --- LÓGICA DO OLHO NA SENHA ---
+        document.getElementById('toggle-senha').addEventListener('click', function() {
+            const inputSenha = document.getElementById('senha-login');
+            if (inputSenha.type === 'password') {
+                inputSenha.type = 'text';
+                this.textContent = '🙈'; // Muda o ícone quando a senha está visível
+            } else {
+                inputSenha.type = 'password';
+                this.textContent = '👁️'; // Volta o ícone original
+            }
+        });
+
         // --- SISTEMA DE LOGIN & AUTH ---
-        
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('login-screen').classList.add('hidden');
@@ -361,19 +430,16 @@
                     }
                     if(d.nome) document.getElementById('login-nome-loja').textContent = d.nome;
                 }
-            } catch(e) {
-                console.log("Aguardando login para carregar dados da loja.");
-            }
+            } catch(e) { console.log("Aguardando login..."); }
         }
 
-
-        // --- RESTO DO SISTEMA (Só roda se logado) ---
-        
+        // --- INICIALIZAÇÃO DO SISTEMA ---
         function inicializarSistema() {
             initDashboard();
             initConfig();
             initPedidos();
             initProdutos();
+            initCupons(); 
         }
 
         window.mostrarNotificacao = (msg, tipo) => {
@@ -389,12 +455,14 @@
             document.getElementById('view-' + tela).classList.add('active');
             if(el) el.classList.add('active');
             if(tela === 'produtos' && produtosLista.length === 0) carregarProdutos();
+            
+            // FECHA O MENU NO MOBILE AUTOMATICAMENTE
+            document.getElementById('sidebar').classList.remove('open');
         };
 
         // --- DASHBOARD ---
         function initDashboard() {
             document.getElementById('data-hoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-            
             getDocs(collection(db, COLLECTIONS.CONFIGURACOES)).then(snap => {
                 if(!snap.empty) {
                     const d = snap.docs[0].data();
@@ -406,16 +474,13 @@
                     }
                 }
             });
-
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snapshot) => {
                 let fat = 0, qtd = 0, pend = 0, lista = [];
                 const hojeStr = new Date().toDateString();
-
                 snapshot.forEach(doc => {
                     const p = { id: doc.id, ...doc.data() };
                     const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
                     const dEntr = p.dataEntregaRealizada?.toDate ? p.dataEntregaRealizada.toDate() : null;
-                    
                     if (dCria && dCria.toDateString() === hojeStr) {
                         qtd++; lista.push(p);
                         fat += p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
@@ -423,11 +488,9 @@
                     if (['recebido', 'em_preparo', 'saiu_entrega'].includes(p.status)) pend++;
                     if (p.isEncomenda && dEntr && dEntr.toDateString() === hojeStr && p.status === 'entregue') fat += (p.valorRestante || 0);
                 });
-
                 document.getElementById('vendas-hoje').textContent = formatarPreco(fat);
                 document.getElementById('pedidos-hoje').textContent = qtd;
                 document.getElementById('pedidos-pendentes').textContent = pend;
-
                 lista.sort((a, b) => b.criadoEm - a.criadoEm);
                 let html = '';
                 lista.slice(0, 5).forEach(p => {
@@ -458,7 +521,6 @@
                 if(e.target.checked) { txt.textContent = "LOJA ABERTA"; txt.className = "status-texto loja-aberta"; }
                 else { txt.textContent = "LOJA FECHADA"; txt.className = "status-texto loja-fechada"; }
             });
-
             const snap = await getDocs(collection(db, COLLECTIONS.CONFIGURACOES));
             if (!snap.empty) {
                 configId = snap.docs[0].id;
@@ -474,7 +536,6 @@
                 switchLoja.dispatchEvent(new Event('change'));
                 if(d.logoUrl) { document.getElementById('preview-logo').src = d.logoUrl; document.getElementById('preview-logo').classList.remove('hidden'); }
             }
-
             document.getElementById('form-config').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const btn = document.getElementById('btn-salvar'); btn.textContent = "Salvando..."; btn.disabled = true;
@@ -496,7 +557,7 @@
             });
         }
 
-        // --- PEDIDOS (CORREÇÃO UNDEFINEDX E PREÇO) ---
+        // --- PEDIDOS ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
         function initPedidos() {
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snap) => {
@@ -509,7 +570,6 @@
             document.getElementById('btn-toggle-entregues').onclick = function() { mostrarEntregues = !mostrarEntregues; this.classList.toggle('active'); renderPedidos(); };
             document.querySelectorAll('.filtro-btn').forEach(b => b.onclick = function() { document.querySelectorAll('.filtro-btn').forEach(x=>x.classList.remove('active')); this.classList.add('active'); filtro = this.dataset.filtro; renderPedidos(); });
         }
-
         function renderPedidos() {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
             let filtrados = todosPedidos.filter(p => {
@@ -518,34 +578,24 @@
             });
             if(filtrados.length === 0) document.getElementById('sem-pedidos').classList.remove('hidden');
             else document.getElementById('sem-pedidos').classList.add('hidden');
-
             const icons = {recebido:'🔵',em_preparo:'🟡',saiu_entrega:'🟣',entregue:'✅'};
-            
             filtrados.forEach(p => {
                 const card = document.createElement('div');
                 card.className = `pedido-card ${p.status}`;
                 card.id = `card-${p.uid}`; 
-                
-                // --- CORREÇÃO DE QUANTIDADE E PREÇO ---
                 const itens = p.itens?.map(i => {
-                    const quantidade = i.qtd || i.quantidade || 1; // FALLBACK DE SEGURANÇA
-                    return `<div class="pedido-item">
-                        <span>${quantidade}x ${i.nome}</span>
-                        <span>${formatarPreco((i.preco||0) * quantidade)}</span>
-                    </div>`;
+                    const quantidade = i.qtd || i.quantidade || 1;
+                    return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>`;
                 }).join('') || '';
-                
-                // --- CORREÇÃO DE ENDEREÇO ---
                 let enderecoTexto = 'Retirada no Balcão';
-                if(p.tipoEntrega === 'entrega') {
-                     if(p.endereco) {
-                         const rua = p.endereco.logradouro || p.endereco.rua || 'Endereço n/d';
-                         const num = p.endereco.numero || 'S/N';
-                         const bairro = p.endereco.bairro || '';
-                         enderecoTexto = `${rua}, ${num} - ${bairro}`;
-                     } else {
-                         enderecoTexto = 'Endereço não informado';
-                     }
+                if(p.tipoEntrega === 'entrega' && p.endereco) {
+                     enderecoTexto = `${p.endereco.logradouro||'Rua'}, ${p.endereco.numero||'SN'} - ${p.endereco.bairro||''}`;
+                }
+                
+                // Mostrar Cupom se existir
+                let cupomHtml = '';
+                if (p.cupom) {
+                    cupomHtml = `<div style="margin-top:5px; color:#16a34a; font-weight:600; font-size:0.9rem;">🎫 Cupom: ${p.cupom.codigo} (-${formatarPreco(p.cupom.desconto)})</div>`;
                 }
 
                 card.innerHTML = `
@@ -558,29 +608,18 @@
                         <p>📍 ${enderecoTexto}</p>
                     </div>
                     <div class="pedido-itens">${itens}</div>
+                    ${cupomHtml}
                     <div class="pedido-total"><span>Total</span><span class="pedido-total-valor">${formatarPreco(p.total||0)}</span></div>
                     <div class="status-dropdown" id="dd-${p.uid}">
                         ${Object.keys(icons).map(k => `<div class="status-option" onclick="window.updSt('${p.uid}','${k}')">${icons[k]} ${k}</div>`).join('')}
                     </div>
                 `;
-                
-                // LÓGICA DO CLIQUE (Z-INDEX)
                 card.onclick = (e) => {
                     if(e.target.closest('.status-option') || e.target.closest('.btn-excluir')) return;
-                    
                     const dropdown = document.getElementById(`dd-${p.uid}`);
                     const estaFechado = !dropdown.classList.contains('active');
-
-                    document.querySelectorAll('.pedido-card').forEach(c => {
-                        c.classList.remove('z-index-alto');
-                        const dd = c.querySelector('.status-dropdown');
-                        if(dd) dd.classList.remove('active');
-                    });
-
-                    if (estaFechado) {
-                        card.classList.add('z-index-alto');
-                        dropdown.classList.add('active');
-                    }
+                    document.querySelectorAll('.pedido-card').forEach(c => { c.classList.remove('z-index-alto'); const dd = c.querySelector('.status-dropdown'); if(dd) dd.classList.remove('active'); });
+                    if (estaFechado) { card.classList.add('z-index-alto'); dropdown.classList.add('active'); }
                 };
                 lista.appendChild(card);
             });
@@ -602,7 +641,6 @@
                     imagemUrl: document.getElementById('img-prod').value,
                     nome: document.getElementById('nome-prod').value,
                     preco: parseFloat(document.getElementById('preco-prod').value),
-                    // SALVANDO O NOVO CAMPO DETALHES
                     detalhes: document.getElementById('detalhes-prod').value, 
                     sobEncomenda: document.getElementById('check-encomenda').checked,
                     emPromocao: document.getElementById('check-promo').checked,
@@ -622,10 +660,7 @@
                 snap.forEach(d => {
                     const p = {id:d.id, ...d.data()}; produtosLista.push(p);
                     const card = document.createElement('div'); card.className = 'produto-admin-card';
-                    // CORREÇÃO IMAGEM PRODUTO
-                    card.innerHTML = `<img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'">
-                    <div class="produto-admin-info"><h3>${p.nome}</h3><div>${formatarPreco(p.preco)}</div></div>
-                    <div class="produto-admin-acoes"><button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button><button class="btn-icon" onclick="window.delProd('${p.id}')">🗑️</button></div>`;
+                    card.innerHTML = `<img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'"><div class="produto-admin-info"><h3>${p.nome}</h3><div>${formatarPreco(p.preco)}</div></div><div class="produto-admin-acoes"><button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button><button class="btn-icon" onclick="window.delProd('${p.id}')">🗑️</button></div>`;
                     div.appendChild(card);
                 });
             });
@@ -634,22 +669,75 @@
             const p = produtosLista.find(x=>x.id===id); idEdit = id; 
             document.getElementById('nome-prod').value = p.nome; document.getElementById('cat-prod').value = p.categoria;
             document.getElementById('img-prod').value = p.imagemUrl; document.getElementById('preco-prod').value = p.preco;
-            // PREENCHENDO DETALHES NA EDIÇÃO
             document.getElementById('detalhes-prod').value = p.detalhes || '';
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
             document.getElementById('modal-produto').classList.add('active');
         };
         window.delProd = async (id) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id)); };
-        
+
+        // --- CUPONS ---
+        function initCupons() {
+            // Listener para carregar cupons
+            onSnapshot(collection(db, 'cupons'), (snap) => {
+                const tbody = document.getElementById('lista-cupons');
+                tbody.innerHTML = '';
+                if(snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum cupom cadastrado.</td></tr>'; return; }
+                
+                snap.forEach(d => {
+                    const c = { id: d.id, ...d.data() };
+                    const hoje = new Date().toISOString().split('T')[0];
+                    const expirado = c.validade < hoje;
+                    const esgotado = c.usos >= c.limite;
+                    
+                    let statusClass = 'status-ativo';
+                    let statusText = 'ATIVO';
+
+                    if (expirado) { statusClass = 'status-inativo'; statusText = 'EXPIRADO'; }
+                    else if (esgotado) { statusClass = 'status-inativo'; statusText = 'ESGOTADO'; }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-weight:700;">${c.codigo}</td>
+                            <td>${formatarPreco(c.valor)}</td>
+                            <td>${new Date(c.validade).toLocaleDateString()}</td>
+                            <td>${c.usos} / ${c.limite}</td>
+                            <td><span class="${statusClass}">${statusText}</span></td>
+                            <td><button class="btn-excluir" onclick="window.delCupom('${c.id}')">🗑️</button></td>
+                        </tr>
+                    `;
+                });
+            });
+
+            // Criar Novo Cupom
+            document.getElementById('btn-novo-cupom').onclick = () => document.getElementById('modal-cupom').classList.add('active');
+
+            document.getElementById('form-cupom').onsubmit = async (e) => {
+                e.preventDefault();
+                const codigo = document.getElementById('cupom-codigo').value.toUpperCase().trim();
+                const valor = parseFloat(document.getElementById('cupom-valor').value);
+                const validade = document.getElementById('cupom-validade').value;
+                const limite = parseInt(document.getElementById('cupom-limite').value);
+
+                if (!codigo || !valor || !validade || !limite) return window.mostrarNotificacao('Preencha tudo', 'erro');
+
+                try {
+                    await addDoc(collection(db, 'cupons'), {
+                        codigo, valor, validade, limite, usos: 0, criadoEm: new Date()
+                    });
+                    window.mostrarNotificacao('Cupom criado!', 'sucesso');
+                    window.fecharModal('modal-cupom');
+                    document.getElementById('form-cupom').reset();
+                } catch(e) {
+                    console.error(e);
+                    window.mostrarNotificacao('Erro ao criar cupom', 'erro');
+                }
+            };
+        }
+        window.delCupom = async (id) => { if(confirm('Excluir cupom?')) await deleteDoc(doc(db, 'cupons', id)); };
+
         // Utils UI
         window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
-        document.getElementById('btn-novo-produto').onclick = () => { 
-            idEdit = null; 
-            document.getElementById('form-produto').reset(); 
-            // Limpa o campo detalhes ao criar novo
-            document.getElementById('detalhes-prod').value = '';
-            document.getElementById('modal-produto').classList.add('active'); 
-        };
+        document.getElementById('btn-novo-produto').onclick = () => { idEdit = null; document.getElementById('form-produto').reset(); document.getElementById('detalhes-prod').value = ''; document.getElementById('modal-produto').classList.add('active'); };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
         document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('check-promo').onchange = (e) => document.getElementById('box-promo').classList.toggle('hidden', !e.target.checked);
