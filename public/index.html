@@ -59,6 +59,11 @@
         .preco-novo { color: #dc2626; }
         .btn-add { width: 32px; height: 32px; border-radius: 50%; background: var(--cor-primaria); color: white; border: none; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .badge-encomenda { position: absolute; top: 8px; right: 8px; background: #2563eb; color: white; font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; }
+        .tag-esgotado { color: #ef4444; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-top: -5px; margin-bottom: 5px; display: block; }
+        
+        /* ESTILOS DE ESTOQUE CLIENTE */
+        .badge-estoque { font-size: 0.75rem; color: #6b7280; font-weight: 600; margin-top: -5px; margin-bottom: 5px; display: block; }
+        .badge-estoque.baixo { color: #ea580c; font-weight: 700; }
 
         /* --- CHECKOUT --- */
         .checkout-container { max-width: 600px; margin: 0 auto; padding: 15px; }
@@ -84,7 +89,7 @@
         .whats-float img { width: 35px; height: 35px; }
         
         /* Modais */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
         @media(min-width: 768px) { .modal { border-radius: 16px; align-self: center; } }
@@ -264,6 +269,9 @@
             <img id="md-img" src="" style="width:100%; height:200px; object-fit:cover; border-radius:12px; margin-bottom:15px; background:#eee;" onerror="this.src='https://placehold.co/400x200?text=Foto+Produto'">
             
             <p id="md-desc" style="color:#666; font-size:0.9rem; margin-bottom:10px; font-style: italic;"></p>
+            
+            <div id="md-estoque-aviso" class="hidden" style="font-size:0.85rem; margin-bottom:10px;"></div>
+
             <div id="md-detalhes-container" class="hidden" style="background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px;">
                 <strong style="display:block; font-size:0.8rem; color:#4b5563; margin-bottom:4px;">Ingredientes / Detalhes:</strong>
                 <p id="md-detalhes" style="color:#374151; font-size:0.85rem; margin:0; line-height:1.4;"></p>
@@ -315,16 +323,13 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        // Adicionei 'increment' para uso no firebase-config.js ou uso direto
         import { db, collection, getDocs, getDoc, doc, addDoc, updateDoc, onSnapshot, query, where, orderBy, formatarPreco, mostrarNotificacao, buscarEnderecoPorCEP, validarCEP, COLLECTIONS } from '../assets/js/firebase-config.js';
-        import { increment } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"; // Import direto para incrementar
+        import { increment } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js"; 
 
         let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
         let produtos = [], categorias = [], configLoja = {};
         let prodSel = null, qtdSel = 1, tipoEntrega = 'entrega', pagSel = '';
         let rastreioListeners = [];
-        
-        // --- VARIAVEL DO CUPOM ---
         let cupomAplicado = null; 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -333,7 +338,6 @@
             carregarEnderecoSalvo(); 
         });
 
-        // --- CACHE DE ENDEREÇO ---
         function carregarEnderecoSalvo() {
             const salvo = localStorage.getItem('ultimo_endereco');
             if(salvo) {
@@ -359,7 +363,6 @@
             mostrarNotificacao('Campos limpos para novo endereço', 'sucesso');
         };
 
-        // --- CORE ---
         function initListeners() {
             onSnapshot(collection(db, COLLECTIONS.CONFIGURACOES), snap => {
                 if(!snap.empty) { configLoja = snap.docs[0].data(); atualizarUIConfig(); }
@@ -412,12 +415,41 @@
         }
 
         function criarCard(p) {
-            const div = document.createElement('div'); div.className = 'produto-card'; div.onclick = () => abrirModalProduto(p);
+            const div = document.createElement('div'); div.className = 'produto-card'; 
+            
+            // VERIFICAÇÃO DE ESTOQUE
+            const isEsgotado = !p.sobEncomenda && (p.estoque !== null && p.estoque !== undefined && p.estoque <= 0);
+            let pode = configLoja.lojaAberta || p.sobEncomenda;
+            
+            let btnTexto = '+';
+            if (isEsgotado) {
+                pode = false;
+                btnTexto = '🚫';
+            } else if (!pode) {
+                btnTexto = '🔒';
+            }
+
+            if(!pode) div.style.opacity = '0.6';
+            
+            div.onclick = () => {
+                if (isEsgotado) return mostrarNotificacao('Produto Esgotado!', 'erro');
+                abrirModalProduto(p);
+            };
+
             const preco = (p.emPromocao && p.precoPromocional) ? p.precoPromocional : p.preco;
             const precoHtml = (p.emPromocao && p.precoPromocional) ? `<span class="preco-antigo">${formatarPreco(p.preco)}</span> <span class="preco-novo">${formatarPreco(preco)}</span>` : formatarPreco(preco);
-            const pode = configLoja.lojaAberta || p.sobEncomenda;
-            if(!pode) div.style.opacity = '0.6';
-            div.innerHTML = `${p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : ''}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3><p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${pode ? '+' : '🔒'}</button></div></div>`;
+            const badgeEnc = p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : '';
+            const tagEsg = isEsgotado ? '<span class="tag-esgotado">Esgotado</span>' : '';
+
+            // LÓGICA DO GATILHO DE ESTOQUE NO CARD
+            let tagEstoque = '';
+            if (!p.sobEncomenda && p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
+                const txtEstoque = p.estoque <= 5 ? `🔥 Restam só ${p.estoque}!` : `📦 ${p.estoque} disponíveis`;
+                const classeEstoque = p.estoque <= 5 ? 'badge-estoque baixo' : 'badge-estoque';
+                tagEstoque = `<span class="${classeEstoque}">${txtEstoque}</span>`;
+            }
+
+            div.innerHTML = `${badgeEnc}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3>${tagEsg}${tagEstoque}<p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${btnTexto}</button></div></div>`;
             return div;
         }
 
@@ -425,11 +457,22 @@
         window.abrirModalProduto = (p) => {
             const pode = configLoja.lojaAberta || p.sobEncomenda;
             if(!pode) return mostrarNotificacao('Loja fechada no momento.', 'erro');
+            
             prodSel = p; qtdSel = 1;
             
             document.getElementById('md-titulo').textContent = p.nome;
             document.getElementById('md-desc').textContent = p.descricao || '';
             
+            // EXIBIÇÃO DO ESTOQUE NO MODAL
+            const avisoEstoque = document.getElementById('md-estoque-aviso');
+            if (!p.sobEncomenda && p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
+                avisoEstoque.textContent = `Estoque disponível: ${p.estoque} un.`;
+                avisoEstoque.style.color = p.estoque <= 5 ? '#ea580c' : '#10b981';
+                avisoEstoque.classList.remove('hidden');
+            } else {
+                avisoEstoque.classList.add('hidden');
+            }
+
             const boxDetalhes = document.getElementById('md-detalhes-container');
             const txtDetalhes = document.getElementById('md-detalhes');
             if (p.detalhes && p.detalhes.trim() !== "") {
@@ -448,7 +491,22 @@
             atualizarPrecoModal(); 
             document.getElementById('modal-produto').classList.add('active');
         };
-        window.mudarQtd = (v) => { if(qtdSel + v >= 1) { qtdSel += v; document.getElementById('md-qtd').textContent = qtdSel; atualizarPrecoModal(); } };
+
+        window.mudarQtd = (v) => { 
+            let novaQtd = qtdSel + v;
+            if(novaQtd >= 1) {
+                // TRAVA DE ESTOQUE NO MODAL
+                if (!prodSel.sobEncomenda && prodSel.estoque !== null && prodSel.estoque !== undefined) {
+                    if (novaQtd > prodSel.estoque) {
+                        return mostrarNotificacao(`Apenas ${prodSel.estoque} unidades em estoque!`, 'erro');
+                    }
+                }
+                qtdSel = novaQtd; 
+                document.getElementById('md-qtd').textContent = qtdSel; 
+                atualizarPrecoModal(); 
+            } 
+        };
+
         function atualizarPrecoModal() {
             const preco = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
             document.getElementById('md-preco').textContent = formatarPreco(preco * qtdSel);
@@ -483,7 +541,6 @@
             const totalReal = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
             const desconto = subtotalNormal - totalReal;
 
-            // Desktop UI
             const dskList = document.getElementById('lista-carrinho-desktop');
             const dskFooter = document.getElementById('footer-carrinho-desktop');
             if(dskList) {
@@ -508,7 +565,6 @@
                     });
                 }
             }
-            // Mobile
             const btn = document.getElementById('btn-carrinho');
             if(carrinho.length > 0) { btn.classList.remove('hidden'); document.getElementById('float-total').textContent = formatarPreco(totalReal); } else { btn.classList.add('hidden'); }
             const mobList = document.getElementById('lista-carrinho'); mobList.innerHTML = '';
@@ -521,11 +577,9 @@
         window.removeItem = (idx) => { carrinho.splice(idx, 1); salvarCarrinho(); };
         window.irParaCheckout = () => { if(carrinho.length === 0) return; fecharModal('modal-carrinho'); trocarTela('checkout'); atualizarResumoCheckout(); };
 
-        // --- CHECKOUT & FINALIZAR ---
         window.mudarEntrega = (t) => { tipoEntrega = t; document.getElementById('opt-entrega').className = `entrega-option ${t==='entrega'?'selected':''}`; document.getElementById('opt-retirada').className = `entrega-option ${t==='retirada'?'selected':''}`; if(t==='entrega') { document.getElementById('box-endereco').classList.remove('hidden'); document.getElementById('box-retirada').classList.add('hidden'); } else { document.getElementById('box-endereco').classList.add('hidden'); document.getElementById('box-retirada').classList.remove('hidden'); } atualizarResumoCheckout(); };
         window.selPag = (t, el) => { pagSel = t; document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('box-pix').classList.add('hidden'); document.getElementById('box-dinheiro').classList.add('hidden'); if(t==='pix') { document.getElementById('box-pix').classList.remove('hidden'); atualizarResumoCheckout(); } else if(t==='dinheiro') { document.getElementById('box-dinheiro').classList.remove('hidden'); } };
 
-        // --- LÓGICA DE CUPONS ---
         window.aplicarCupom = async () => {
             const input = document.getElementById('input-cupom');
             const codigo = input.value.trim().toUpperCase();
@@ -536,7 +590,6 @@
             msg.textContent = 'Verificando...'; msg.className = 'cupom-msg';
 
             try {
-                // Busca cupom no banco
                 const q = query(collection(db, 'cupons'), where('codigo', '==', codigo));
                 const snap = await getDocs(q);
 
@@ -555,7 +608,6 @@
                         msg.textContent = 'Limite de uso deste cupom atingido.'; msg.className = 'cupom-msg erro';
                         cupomAplicado = null;
                     } else {
-                        // Cupom Válido!
                         cupomAplicado = { id: docCupom.id, ...dados };
                         msg.textContent = `Desconto de ${formatarPreco(dados.valor)} aplicado!`;
                         msg.className = 'cupom-msg sucesso';
@@ -577,7 +629,6 @@
             let descontoCupom = 0;
             if (cupomAplicado) {
                 descontoCupom = cupomAplicado.valor;
-                // Não deixa o total ficar negativo
                 if (descontoCupom > totalProdutos) descontoCupom = totalProdutos;
             }
 
@@ -593,7 +644,6 @@
             document.getElementById('chk-entrega').textContent = taxa === 0 ? 'Grátis' : formatarPreco(taxa);
             document.getElementById('chk-total').textContent = formatarPreco(totalFinal);
 
-            // Exibir descontos
             if(descontoProdutos > 0) {
                 document.getElementById('chk-box-desc').classList.remove('hidden');
                 document.getElementById('chk-desconto').textContent = `- ${formatarPreco(descontoProdutos)}`;
@@ -601,7 +651,6 @@
                 document.getElementById('chk-box-desc').classList.add('hidden');
             }
 
-            // Exibir desconto do cupom
             if (cupomAplicado) {
                 document.getElementById('chk-box-cupom').classList.remove('hidden');
                 document.getElementById('chk-valor-cupom').textContent = `- ${formatarPreco(descontoCupom)}`;
@@ -628,7 +677,6 @@
             if(!pagSel) return mostrarNotificacao('Selecione pagamento!', 'erro');
             if(tipoEntrega === 'entrega' && !document.getElementById('endereco').value) return mostrarNotificacao('Endereço incompleto!', 'erro');
 
-            // Recalcula totais para segurança
             const totalProdutos = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
             let descCupom = 0;
             if(cupomAplicado) {
@@ -639,7 +687,6 @@
             
             const enc = carrinho.some(i=>i.sobEncomenda);
             
-            // Salvar Endereço no Cache
             const dadosSalvar = {
                 nome: document.getElementById('nome-cliente').value,
                 tel: document.getElementById('tel-cliente').value,
@@ -660,26 +707,38 @@
                 itens: carrinho, total: total, isEncomenda: enc, valorSinal: enc?total/2:total, valorRestante: enc?total/2:0, saldoDevedor: enc,
                 pagamento: { forma: pagSel, troco: document.getElementById('troco').value, status: enc?'parcial_sinal':'pendente' },
                 status: 'recebido', criadoEm: new Date(), atualizadoEm: new Date(),
-                // Dados do cupom no pedido
                 cupom: cupomAplicado ? { codigo: cupomAplicado.codigo, desconto: descCupom } : null
             };
 
             try {
-                // 1. Salva o pedido
                 const ref = await addDoc(collection(db, COLLECTIONS.PEDIDOS), pedido);
                 
-                // 2. Incrementa uso do cupom se foi usado
                 if (cupomAplicado) {
                     const cupomRef = doc(db, 'cupons', cupomAplicado.id);
-                    await updateDoc(cupomRef, {
-                        usos: increment(1)
-                    });
+                    await updateDoc(cupomRef, { usos: increment(1) });
+                }
+
+                // DEDUZIR ESTOQUE DOS PRODUTOS
+                for (let item of carrinho) {
+                    if (!item.sobEncomenda) {
+                        try {
+                            const prodRef = doc(db, COLLECTIONS.PRODUTOS, item.id);
+                            const pData = produtos.find(p => p.id === item.id);
+                            if (pData && pData.estoque !== null && pData.estoque !== undefined) {
+                                await updateDoc(prodRef, {
+                                    estoque: increment(-item.qtd)
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Erro ao baixar estoque", err);
+                        }
+                    }
                 }
 
                 let meus = JSON.parse(localStorage.getItem('meus_pedidos_ids'))||[]; meus.push(ref.id); localStorage.setItem('meus_pedidos_ids', JSON.stringify(meus));
                 localStorage.removeItem('carrinho'); carrinho = [];
                 
-                enviarWhatsApp(pedido); // Envia para o whats
+                enviarWhatsApp(pedido); 
                 
                 mostrarNotificacao('Pedido enviado!', 'sucesso');
                 setTimeout(() => window.location.reload(), 2000);
@@ -724,7 +783,6 @@
             }
         }
 
-        // --- RASTREIO TEMPO REAL ---
         window.abrirRastreio = async () => {
             document.getElementById('modal-rastreio').classList.add('active');
             const lista = document.getElementById('lista-pedidos-rastreio');
