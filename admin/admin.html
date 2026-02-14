@@ -126,7 +126,6 @@
         .toast-erro { background-color: #ef4444; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
-        /* Z-INDEX NO MODAL DO ADMIN TAMBÉM */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
@@ -154,7 +153,7 @@
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.4</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.6</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -345,7 +344,9 @@
                 </div>
                 <div class="check-group"><input type="checkbox" id="check-promo"><label>Promoção</label></div>
                 <div class="form-group hidden" id="box-promo"><input type="number" id="preco-promo" class="form-input" placeholder="Preço Promo"></div>
-                <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda (Não usa estoque)</label></div>
+                
+                <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda</label></div>
+                
                 <button type="submit" class="btn btn-primario">Salvar</button>
             </form>
         </div>
@@ -389,7 +390,6 @@
         import { db, auth, collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, COLLECTIONS } from '../assets/js/firebase-config.js';
         import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-        // --- LÓGICA DO OLHO NA SENHA ---
         document.getElementById('toggle-senha').addEventListener('click', function() {
             const inputSenha = document.getElementById('senha-login');
             if (inputSenha.type === 'password') {
@@ -401,7 +401,6 @@
             }
         });
 
-        // --- SISTEMA DE LOGIN & AUTH ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('login-screen').classList.add('hidden');
@@ -452,7 +451,6 @@
             } catch(e) { console.log("Aguardando login..."); }
         }
 
-        // --- INICIALIZAÇÃO DO SISTEMA ---
         function inicializarSistema() {
             initDashboard();
             initConfig();
@@ -478,7 +476,6 @@
             document.getElementById('sidebar').classList.remove('open');
         };
 
-        // --- DASHBOARD ---
         function initDashboard() {
             document.getElementById('data-hoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
             getDocs(collection(db, COLLECTIONS.CONFIGURACOES)).then(snap => {
@@ -525,7 +522,6 @@
             });
         }
 
-        // --- CONFIGURAÇÕES ---
         let configId = null;
         async function initConfig() {
             const switchLoja = document.getElementById('switch-loja');
@@ -575,7 +571,6 @@
             });
         }
 
-        // --- PEDIDOS ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
         function initPedidos() {
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snap) => {
@@ -647,25 +642,18 @@
         // --- PRODUTOS ---
         let produtosLista = [], cats = [], idEdit = null;
 
-        // FUNÇÃO DE CONVERSÃO DE URL (Google Drive)
         function converterUrlImagem(url) {
             if (!url) return url;
-            
-            // Verifica se é link de visualização do Google Drive (formato file/d/)
             const gdriveRegex = /drive\.google\.com\/file\/d\/([^/]+)/;
             const matchDrive = url.match(gdriveRegex);
             if (matchDrive && matchDrive[1]) {
                 return `https://drive.google.com/uc?export=view&id=${matchDrive[1]}`;
             }
-            
-            // Verifica se é link do Google Drive (formato open?id=)
             const gdriveOpenRegex = /drive\.google\.com\/open\?id=([^&]+)/;
             const matchOpen = url.match(gdriveOpenRegex);
             if (matchOpen && matchOpen[1]) {
                 return `https://drive.google.com/uc?export=view&id=${matchOpen[1]}`;
             }
-
-            // Retorna URL original (Usar "Link Direto" no ImgBB já vem certinho)
             return url; 
         }
 
@@ -679,16 +667,26 @@
                 
                 const vEstoque = document.getElementById('estoque-prod').value;
                 const urlBruta = document.getElementById('img-prod').value;
+                
+                const precoNormal = parseFloat(document.getElementById('preco-prod').value);
+                const isPromo = document.getElementById('check-promo').checked;
+                const precoPromo = parseFloat(document.getElementById('preco-promo').value);
+
+                if (isPromo) {
+                    if (!precoPromo || precoPromo >= precoNormal) {
+                        return window.mostrarNotificacao('O preço promocional deve ser MENOR que o original!', 'erro');
+                    }
+                }
 
                 const d = {
                     categoria: document.getElementById('cat-prod').value,
-                    imagemUrl: converterUrlImagem(urlBruta), // AQUI CONVERTE O LINK DO DRIVE
+                    imagemUrl: converterUrlImagem(urlBruta),
                     nome: document.getElementById('nome-prod').value,
-                    preco: parseFloat(document.getElementById('preco-prod').value),
+                    preco: precoNormal,
                     detalhes: document.getElementById('detalhes-prod').value, 
                     sobEncomenda: document.getElementById('check-encomenda').checked,
-                    emPromocao: document.getElementById('check-promo').checked,
-                    precoPromocional: parseFloat(document.getElementById('preco-promo').value) || null,
+                    emPromocao: isPromo,
+                    precoPromocional: isPromo ? precoPromo : null,
                     estoque: vEstoque ? parseInt(vEstoque) : null
                 };
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
@@ -706,14 +704,13 @@
                     const p = {id:d.id, ...d.data()}; produtosLista.push(p);
                     const card = document.createElement('div'); card.className = 'produto-admin-card';
                     
+                    // Removido o filtro de (!p.sobEncomenda) para exibir o estoque sempre
                     let infoEstoque = '';
-                    if (!p.sobEncomenda) {
-                        if (p.estoque !== null && p.estoque !== undefined) {
-                            const corEstoque = p.estoque > 0 ? '#10b981' : '#ef4444';
-                            infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:${corEstoque};">Estoque: ${p.estoque}</div>`;
-                        } else {
-                            infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:#6b7280;">Estoque: Ilimitado</div>`;
-                        }
+                    if (p.estoque !== null && p.estoque !== undefined) {
+                        const corEstoque = p.estoque > 0 ? '#10b981' : '#ef4444';
+                        infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:${corEstoque};">Estoque: ${p.estoque}</div>`;
+                    } else {
+                        infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:#6b7280;">Estoque: Ilimitado</div>`;
                     }
 
                     card.innerHTML = `
@@ -740,7 +737,11 @@
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
             document.getElementById('check-encomenda').checked = p.sobEncomenda;
             
-            document.getElementById('box-estoque').classList.toggle('hidden', p.sobEncomenda);
+            document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
+            
+            // O box de estoque agora fica sempre visível
+            document.getElementById('box-estoque').classList.remove('hidden');
+
             document.getElementById('modal-produto').classList.add('active');
         };
         window.delProd = async (id) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id)); };
@@ -798,22 +799,18 @@
         }
         window.delCupom = async (id) => { if(confirm('Excluir cupom?')) await deleteDoc(doc(db, 'cupons', id)); };
 
-        // Utils UI
         window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
         document.getElementById('btn-novo-produto').onclick = () => { 
             idEdit = null; 
             document.getElementById('form-produto').reset(); 
             document.getElementById('detalhes-prod').value = ''; 
-            document.getElementById('box-estoque').classList.remove('hidden');
+            document.getElementById('box-estoque').classList.remove('hidden'); 
+            document.getElementById('box-promo').classList.add('hidden'); 
             document.getElementById('modal-produto').classList.add('active'); 
         };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
         document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('check-promo').onchange = (e) => document.getElementById('box-promo').classList.toggle('hidden', !e.target.checked);
-        
-        document.getElementById('check-encomenda').onchange = (e) => {
-            document.getElementById('box-estoque').classList.toggle('hidden', e.target.checked);
-        };
 
     </script>
 </body>
