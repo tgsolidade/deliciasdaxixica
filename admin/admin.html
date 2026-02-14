@@ -153,7 +153,7 @@
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.6</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.7</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -342,10 +342,16 @@
                     <label>Ingredientes / Detalhes</label>
                     <textarea id="detalhes-prod" class="form-textarea" rows="3" placeholder="Ex: Pão brioche, blend 180g, queijo cheddar, bacon..."></textarea>
                 </div>
+
                 <div class="check-group"><input type="checkbox" id="check-promo"><label>Promoção</label></div>
                 <div class="form-group hidden" id="box-promo"><input type="number" id="preco-promo" class="form-input" placeholder="Preço Promo"></div>
                 
                 <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda</label></div>
+                
+                <div class="check-group" style="margin-top: 15px; border-color: #fca5a5; background: #fef2f2;">
+                    <input type="checkbox" id="check-bloquear-obs">
+                    <label style="color: #991b1b;">Bloquear Observações (Receita fechada - não permite alterações)</label>
+                </div>
                 
                 <button type="submit" class="btn btn-primario">Salvar</button>
             </form>
@@ -687,7 +693,9 @@
                     sobEncomenda: document.getElementById('check-encomenda').checked,
                     emPromocao: isPromo,
                     precoPromocional: isPromo ? precoPromo : null,
-                    estoque: vEstoque ? parseInt(vEstoque) : null
+                    estoque: vEstoque ? parseInt(vEstoque) : null,
+                    // NOVO CAMPO: BLOQUEIO DE OBSERVAÇÕES
+                    bloquearObs: document.getElementById('check-bloquear-obs').checked
                 };
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
                 else await addDoc(collection(db, COLLECTIONS.PRODUTOS), {...d, criadoEm: new Date()});
@@ -704,7 +712,6 @@
                     const p = {id:d.id, ...d.data()}; produtosLista.push(p);
                     const card = document.createElement('div'); card.className = 'produto-admin-card';
                     
-                    // Removido o filtro de (!p.sobEncomenda) para exibir o estoque sempre
                     let infoEstoque = '';
                     if (p.estoque !== null && p.estoque !== undefined) {
                         const corEstoque = p.estoque > 0 ? '#10b981' : '#ef4444';
@@ -713,12 +720,16 @@
                         infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:#6b7280;">Estoque: Ilimitado</div>`;
                     }
 
+                    // Aviso visual no admin se o produto tem receita fechada
+                    const infoObs = p.bloquearObs ? `<div style="font-size:0.75rem; color:#ef4444; margin-top:2px;">⚠️ Receita Fechada</div>` : '';
+
                     card.innerHTML = `
                     <img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'">
                     <div class="produto-admin-info">
                         <h3>${p.nome}</h3>
                         <div>${formatarPreco(p.preco)}</div>
                         ${infoEstoque}
+                        ${infoObs}
                     </div>
                     <div class="produto-admin-acoes">
                         <button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button>
@@ -737,9 +748,10 @@
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
             document.getElementById('check-encomenda').checked = p.sobEncomenda;
             
-            document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
+            // CARREGA A OPÇÃO DE BLOQUEIO
+            document.getElementById('check-bloquear-obs').checked = p.bloquearObs || false;
             
-            // O box de estoque agora fica sempre visível
+            document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
             document.getElementById('box-estoque').classList.remove('hidden');
 
             document.getElementById('modal-produto').classList.add('active');
@@ -799,6 +811,7 @@
         }
         window.delCupom = async (id) => { if(confirm('Excluir cupom?')) await deleteDoc(doc(db, 'cupons', id)); };
 
+        // Utils UI
         window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
         document.getElementById('btn-novo-produto').onclick = () => { 
             idEdit = null; 
@@ -806,6 +819,8 @@
             document.getElementById('detalhes-prod').value = ''; 
             document.getElementById('box-estoque').classList.remove('hidden'); 
             document.getElementById('box-promo').classList.add('hidden'); 
+            // GARANTE QUE O CHECKBOX DE BLOQUEIO VENHA DESMARCADO
+            document.getElementById('check-bloquear-obs').checked = false;
             document.getElementById('modal-produto').classList.add('active'); 
         };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
