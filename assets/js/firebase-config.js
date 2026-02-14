@@ -5,8 +5,6 @@
 
 // --- IMPORTAÇÕES (SDKs) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-
-// 👇 NOVO IMPORT DE SEGURANÇA (App Check) 👇
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js";
 
 import { 
@@ -55,7 +53,7 @@ const firebaseConfig = {
 // --- INICIALIZAÇÃO ---
 const app = initializeApp(firebaseConfig);
 
-// 👇 INICIALIZAÇÃO DO ESCUDO ANTI-ROBÔS 👇
+// 👇 INICIALIZAÇÃO DO ESCUDO ANTI-ROBÔS (App Check) 👇
 const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6Ldh1mssAAAAAJKmL47CVANSKHTCm-xGNqQ8NJ4W'),
   isTokenAutoRefreshEnabled: true
@@ -137,8 +135,7 @@ export function formatarData(timestamp) {
   }).format(data);
 }
 
-// --- FUNÇÕES DE CEP (Que estavam faltando) ---
-
+// --- FUNÇÕES DE CEP ---
 export function validarCEP(cep) {
     const regex = /^[0-9]{5}-?[0-9]{3}$/;
     return regex.test(cep);
@@ -174,7 +171,7 @@ export function mostrarNotificacao(mensagem, tipo = 'sucesso') {
   if (!container) {
       container = document.createElement('div');
       container.id = 'toast-container';
-      container.style.cssText = "position: fixed; bottom: 20px; right: 20px; z-index: 9999;";
+      container.style.cssText = "position: fixed; bottom: 20px; right: 20px; z-index: 99999;";
       document.body.appendChild(container);
   }
 
