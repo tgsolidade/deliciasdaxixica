@@ -153,7 +153,7 @@
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.7</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.8 - Alerta Ativo 🔔</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -577,18 +577,47 @@
             });
         }
 
+        // --- PEDIDOS (AGORA COM ALERTA SONORO 🔔) ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
+        let primeiraCargaPedidos = true; // Impede que toque som para pedidos velhos no login
+
         function initPedidos() {
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snap) => {
+                
+                // LÓGICA DO ALERTA SONORO
+                if (!primeiraCargaPedidos) {
+                    snap.docChanges().forEach(change => {
+                        // Verifica se o Firebase avisou que um documento NOVO foi adicionado
+                        if (change.type === 'added') {
+                            // Toca o som (Link padrão do Google)
+                            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                            audio.play().catch(e => console.log('Áudio bloqueado pelo navegador', e));
+                            
+                            // Dispara um toast de aviso
+                            window.mostrarNotificacao('🔔 NOVO PEDIDO CHEGOU!', 'sucesso');
+                        }
+                    });
+                }
+                primeiraCargaPedidos = false; // Após a primeira leitura, ativa o alarme
+
                 todosPedidos = [];
                 snap.forEach(d => todosPedidos.push({ uid: d.id, ...d.data() }));
-                todosPedidos.sort((a,b) => b.criadoEm.toDate() - a.criadoEm.toDate());
+                
+                // Sort com tratamento de segurança caso a data venha nula no milissegundo exato
+                todosPedidos.sort((a,b) => {
+                    const dataA = a.criadoEm?.toDate ? a.criadoEm.toDate() : new Date();
+                    const dataB = b.criadoEm?.toDate ? b.criadoEm.toDate() : new Date();
+                    return dataB - dataA;
+                });
+
                 renderPedidos();
                 document.getElementById('loading-pedidos').classList.add('hidden');
             });
+            
             document.getElementById('btn-toggle-entregues').onclick = function() { mostrarEntregues = !mostrarEntregues; this.classList.toggle('active'); renderPedidos(); };
             document.querySelectorAll('.filtro-btn').forEach(b => b.onclick = function() { document.querySelectorAll('.filtro-btn').forEach(x=>x.classList.remove('active')); this.classList.add('active'); filtro = this.dataset.filtro; renderPedidos(); });
         }
+
         function renderPedidos() {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
             let filtrados = todosPedidos.filter(p => {
@@ -694,7 +723,6 @@
                     emPromocao: isPromo,
                     precoPromocional: isPromo ? precoPromo : null,
                     estoque: vEstoque ? parseInt(vEstoque) : null,
-                    // NOVO CAMPO: BLOQUEIO DE OBSERVAÇÕES
                     bloquearObs: document.getElementById('check-bloquear-obs').checked
                 };
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
@@ -720,7 +748,6 @@
                         infoEstoque = `<div style="font-size:0.8rem; font-weight:600; color:#6b7280;">Estoque: Ilimitado</div>`;
                     }
 
-                    // Aviso visual no admin se o produto tem receita fechada
                     const infoObs = p.bloquearObs ? `<div style="font-size:0.75rem; color:#ef4444; margin-top:2px;">⚠️ Receita Fechada</div>` : '';
 
                     card.innerHTML = `
@@ -748,7 +775,6 @@
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
             document.getElementById('check-encomenda').checked = p.sobEncomenda;
             
-            // CARREGA A OPÇÃO DE BLOQUEIO
             document.getElementById('check-bloquear-obs').checked = p.bloquearObs || false;
             
             document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
@@ -819,7 +845,6 @@
             document.getElementById('detalhes-prod').value = ''; 
             document.getElementById('box-estoque').classList.remove('hidden'); 
             document.getElementById('box-promo').classList.add('hidden'); 
-            // GARANTE QUE O CHECKBOX DE BLOQUEIO VENHA DESMARCADO
             document.getElementById('check-bloquear-obs').checked = false;
             document.getElementById('modal-produto').classList.add('active'); 
         };
