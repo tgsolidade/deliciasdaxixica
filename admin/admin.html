@@ -20,7 +20,7 @@
         /* --- TELA DE LOGIN --- */
         .login-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #f3f4f6; z-index: 9999; display: flex; flex-direction: column;
+            background: #f3f4f6; z-index: 99999; display: flex; flex-direction: column;
             align-items: center; justify-content: center; padding: 20px;
         }
         .login-card {
@@ -119,12 +119,19 @@
         .status-ativo { color: #10b981; font-weight: 600; background: #dcfce7; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
         .status-inativo { color: #ef4444; font-weight: 600; background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
 
-        /* --- TOAST --- */
-        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+        /* --- TOAST E MODAIS --- */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 99999; }
         .toast { padding: 12px 24px; border-radius: 8px; color: white; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out; }
         .toast-sucesso { background-color: #10b981; }
         .toast-erro { background-color: #ef4444; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* Z-INDEX NO MODAL DO ADMIN TAMBÉM */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
+        @media(min-width: 768px) { .modal { border-radius: 16px; align-self: center; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -147,7 +154,7 @@
             </form>
             <p id="erro-login" style="color: red; margin-top: 10px; font-size: 0.9rem; display: none;"></p>
         </div>
-        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.3</p>
+        <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem;">Sistema SaaS Seguro v1.4</p>
     </div>
 
     <div class="admin-layout hidden" id="admin-layout">
@@ -317,7 +324,13 @@
             <div class="modal-header"><h2>Produto</h2><button class="modal-close" onclick="window.fecharModal('modal-produto')">×</button></div>
             <form id="form-produto">
                 <div class="form-group"><label>Categoria</label><select id="cat-prod" class="form-input" required></select></div>
-                <div class="form-group"><label>Imagem URL</label><input type="url" id="img-prod" class="form-input" required></div>
+                <div class="form-group">
+                    <label>Imagem URL</label>
+                    <input type="url" id="img-prod" class="form-input" required>
+                    <small style="color: #6b7280; font-size: 0.75rem; margin-top: 5px; display: block;">
+                        💡 <b>Dica:</b> Cole links do Google Drive, ou o <b>"Link Direto"</b> do ImgBB.
+                    </small>
+                </div>
                 <div class="form-group"><label>Nome</label><input type="text" id="nome-prod" class="form-input" required></div>
                 <div class="form-group"><label>Preço</label><input type="number" id="preco-prod" class="form-input" step="0.01" required></div>
                 
@@ -633,6 +646,29 @@
 
         // --- PRODUTOS ---
         let produtosLista = [], cats = [], idEdit = null;
+
+        // FUNÇÃO DE CONVERSÃO DE URL (Google Drive)
+        function converterUrlImagem(url) {
+            if (!url) return url;
+            
+            // Verifica se é link de visualização do Google Drive (formato file/d/)
+            const gdriveRegex = /drive\.google\.com\/file\/d\/([^/]+)/;
+            const matchDrive = url.match(gdriveRegex);
+            if (matchDrive && matchDrive[1]) {
+                return `https://drive.google.com/uc?export=view&id=${matchDrive[1]}`;
+            }
+            
+            // Verifica se é link do Google Drive (formato open?id=)
+            const gdriveOpenRegex = /drive\.google\.com\/open\?id=([^&]+)/;
+            const matchOpen = url.match(gdriveOpenRegex);
+            if (matchOpen && matchOpen[1]) {
+                return `https://drive.google.com/uc?export=view&id=${matchOpen[1]}`;
+            }
+
+            // Retorna URL original (Usar "Link Direto" no ImgBB já vem certinho)
+            return url; 
+        }
+
         function initProdutos() {
             onSnapshot(query(collection(db, 'categorias'), orderBy('nome')), (snap) => {
                 const sel = document.getElementById('cat-prod'); sel.innerHTML = '<option>Selecione...</option>'; cats = [];
@@ -640,17 +676,20 @@
             });
             document.getElementById('form-produto').onsubmit = async (e) => {
                 e.preventDefault();
+                
                 const vEstoque = document.getElementById('estoque-prod').value;
+                const urlBruta = document.getElementById('img-prod').value;
+
                 const d = {
                     categoria: document.getElementById('cat-prod').value,
-                    imagemUrl: document.getElementById('img-prod').value,
+                    imagemUrl: converterUrlImagem(urlBruta), // AQUI CONVERTE O LINK DO DRIVE
                     nome: document.getElementById('nome-prod').value,
                     preco: parseFloat(document.getElementById('preco-prod').value),
                     detalhes: document.getElementById('detalhes-prod').value, 
                     sobEncomenda: document.getElementById('check-encomenda').checked,
                     emPromocao: document.getElementById('check-promo').checked,
                     precoPromocional: parseFloat(document.getElementById('preco-promo').value) || null,
-                    estoque: vEstoque ? parseInt(vEstoque) : null // Salva null se vazio
+                    estoque: vEstoque ? parseInt(vEstoque) : null
                 };
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
                 else await addDoc(collection(db, COLLECTIONS.PRODUTOS), {...d, criadoEm: new Date()});
@@ -667,7 +706,6 @@
                     const p = {id:d.id, ...d.data()}; produtosLista.push(p);
                     const card = document.createElement('div'); card.className = 'produto-admin-card';
                     
-                    // Exibição do estoque no card do admin
                     let infoEstoque = '';
                     if (!p.sobEncomenda) {
                         if (p.estoque !== null && p.estoque !== undefined) {
@@ -702,9 +740,7 @@
             document.getElementById('check-promo').checked = p.emPromocao; document.getElementById('preco-promo').value = p.precoPromocional;
             document.getElementById('check-encomenda').checked = p.sobEncomenda;
             
-            // Controle visual do box de estoque
             document.getElementById('box-estoque').classList.toggle('hidden', p.sobEncomenda);
-
             document.getElementById('modal-produto').classList.add('active');
         };
         window.delProd = async (id) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id)); };
@@ -768,14 +804,13 @@
             idEdit = null; 
             document.getElementById('form-produto').reset(); 
             document.getElementById('detalhes-prod').value = ''; 
-            document.getElementById('box-estoque').classList.remove('hidden'); // Garante que aparece no novo
+            document.getElementById('box-estoque').classList.remove('hidden');
             document.getElementById('modal-produto').classList.add('active'); 
         };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
         document.getElementById('toggle-sidebar').onclick = () => document.getElementById('sidebar').classList.toggle('open');
         document.getElementById('check-promo').onchange = (e) => document.getElementById('box-promo').classList.toggle('hidden', !e.target.checked);
         
-        // Esconder estoque se for encomenda
         document.getElementById('check-encomenda').onchange = (e) => {
             document.getElementById('box-estoque').classList.toggle('hidden', e.target.checked);
         };
