@@ -1,10 +1,13 @@
 /**
  * CONFIGURAÇÃO DO FIREBASE - COMPLETA (Admin + Cliente)
- * Versão: 10.13.0
+ * Versão: 10.13.0 (Com App Check de Segurança)
  */
 
 // --- IMPORTAÇÕES (SDKs) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+
+// 👇 NOVO IMPORT DE SEGURANÇA (App Check) 👇
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app-check.js";
 
 import { 
     getFirestore, 
@@ -51,6 +54,14 @@ const firebaseConfig = {
 
 // --- INICIALIZAÇÃO ---
 const app = initializeApp(firebaseConfig);
+
+// 👇 INICIALIZAÇÃO DO ESCUDO ANTI-ROBÔS 👇
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6Ldh1mssAAAAAJKmL47CVANSKHTCm-xGNqQ8NJ4W'),
+  isTokenAutoRefreshEnabled: true
+});
+// 👆 FIM DA SEGURANÇA 👆
+
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
@@ -202,4 +213,4 @@ styleSheet.innerText = `
 `;
 document.head.appendChild(styleSheet);
 
-console.log('🔥 Firebase Configurado (Admin + CEP) OK!');
+console.log('🔥 Firebase Configurado (Admin + CEP + App Check) OK!');
