@@ -61,7 +61,6 @@
         .badge-encomenda { position: absolute; top: 8px; right: 8px; background: #2563eb; color: white; font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; }
         .tag-esgotado { color: #ef4444; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-top: -5px; margin-bottom: 5px; display: block; }
         
-        /* ESTILOS DE ESTOQUE CLIENTE */
         .badge-estoque { font-size: 0.75rem; color: #6b7280; font-weight: 600; margin-top: -5px; margin-bottom: 5px; display: block; }
         .badge-estoque.baixo { color: #ea580c; font-weight: 700; }
 
@@ -79,33 +78,28 @@
         .resumo-desconto { color: #16a34a; font-size: 0.9rem; }
         .resumo-total { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e7eb; font-weight: 900; font-size: 1.4rem; color: #1f2937; }
 
-        /* Botão Flutuante Carrinho */
         .btn-flutuante { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: var(--cor-primaria); color: white; padding: 15px; border-radius: 50px; text-align: center; font-weight: 700; font-size: 1.1rem; box-shadow: 0 5px 20px rgba(0,0,0,0.3); z-index: 100; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; transition: transform 0.2s; cursor: pointer; }
         .btn-flutuante:active { transform: translateX(-50%) scale(0.95); }
 
-        /* Botão Flutuante WhatsApp */
         .whats-float { position: fixed; bottom: 90px; right: 20px; width: 55px; height: 55px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 99; transition: transform 0.2s; }
         .whats-float:hover { transform: scale(1.1); }
         .whats-float img { width: 35px; height: 35px; }
         
-        /* Modais */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
         @media(min-width: 768px) { .modal { border-radius: 16px; align-self: center; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* Botão Novo Endereço */
         .btn-novo-end { background: none; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; color: #666; cursor: pointer; float: right; }
         
-        /* Estilo para a caixa de cupom */
         .cupom-box { display: flex; gap: 8px; margin-bottom: 10px; }
         .cupom-box input { flex: 1; text-transform: uppercase; }
         .cupom-msg { font-size: 0.85rem; margin-bottom: 15px; font-weight: 600; }
         .cupom-msg.sucesso { color: #16a34a; }
         .cupom-msg.erro { color: #ef4444; }
 
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; }
         .toast { background: #333; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; animation: fadeIn 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
         .toast.sucesso { background: #10b981; } .toast.erro { background: #ef4444; }
     </style>
@@ -285,7 +279,13 @@
                     <input type="date" id="md-data" class="form-input"><input type="time" id="md-hora" class="form-input">
                 </div>
             </div>
+            
+            <div id="md-obs-aviso" class="hidden" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 15px; font-weight: 600; padding: 10px; background: #fee2e2; border-radius: 8px; border: 1px solid #fecaca;">
+                ⚠️ Receita fechada: Este produto não permite alterações nos ingredientes.
+            </div>
+
             <textarea id="md-obs" class="form-textarea" placeholder="Observações? (Ex: Sem cebola, ponto da carne...)" rows="2" style="margin-bottom:15px;"></textarea>
+            
             <div style="display:flex; gap:15px; align-items:center;">
                 <div style="display:flex; align-items:center; border:1px solid #ddd; border-radius:8px;">
                     <button onclick="mudarQtd(-1)" style="padding:10px 15px; background:none; border:none; font-size:1.2rem;">-</button>
@@ -417,8 +417,7 @@
         function criarCard(p) {
             const div = document.createElement('div'); div.className = 'produto-card'; 
             
-            // VERIFICAÇÃO DE ESTOQUE
-            const isEsgotado = !p.sobEncomenda && (p.estoque !== null && p.estoque !== undefined && p.estoque <= 0);
+            const isEsgotado = (p.estoque !== null && p.estoque !== undefined && p.estoque <= 0);
             let pode = configLoja.lojaAberta || p.sobEncomenda;
             
             let btnTexto = '+';
@@ -441,9 +440,8 @@
             const badgeEnc = p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : '';
             const tagEsg = isEsgotado ? '<span class="tag-esgotado">Esgotado</span>' : '';
 
-            // LÓGICA DO GATILHO DE ESTOQUE NO CARD
             let tagEstoque = '';
-            if (!p.sobEncomenda && p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
+            if (p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
                 const txtEstoque = p.estoque <= 5 ? `🔥 Restam só ${p.estoque}!` : `📦 ${p.estoque} disponíveis`;
                 const classeEstoque = p.estoque <= 5 ? 'badge-estoque baixo' : 'badge-estoque';
                 tagEstoque = `<span class="${classeEstoque}">${txtEstoque}</span>`;
@@ -453,7 +451,6 @@
             return div;
         }
 
-        // --- CARRINHO LOGIC ---
         window.abrirModalProduto = (p) => {
             const pode = configLoja.lojaAberta || p.sobEncomenda;
             if(!pode) return mostrarNotificacao('Loja fechada no momento.', 'erro');
@@ -463,9 +460,8 @@
             document.getElementById('md-titulo').textContent = p.nome;
             document.getElementById('md-desc').textContent = p.descricao || '';
             
-            // EXIBIÇÃO DO ESTOQUE NO MODAL
             const avisoEstoque = document.getElementById('md-estoque-aviso');
-            if (!p.sobEncomenda && p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
+            if (p.estoque !== null && p.estoque !== undefined && p.estoque > 0) {
                 avisoEstoque.textContent = `Estoque disponível: ${p.estoque} un.`;
                 avisoEstoque.style.color = p.estoque <= 5 ? '#ea580c' : '#10b981';
                 avisoEstoque.classList.remove('hidden');
@@ -484,7 +480,19 @@
 
             document.getElementById('md-img').src = p.imagemUrl;
             document.getElementById('md-qtd').textContent = 1;
-            document.getElementById('md-obs').value = '';
+            
+            // LÓGICA DE BLOQUEIO DE OBSERVAÇÕES
+            const campoObs = document.getElementById('md-obs');
+            const avisoObs = document.getElementById('md-obs-aviso');
+            campoObs.value = '';
+            
+            if (p.bloquearObs) {
+                campoObs.classList.add('hidden');
+                avisoObs.classList.remove('hidden');
+            } else {
+                campoObs.classList.remove('hidden');
+                avisoObs.classList.add('hidden');
+            }
             
             if(p.sobEncomenda) { document.getElementById('md-encomenda-opt').classList.remove('hidden'); document.getElementById('md-check-enc').checked = false; document.getElementById('md-agendamento').classList.add('hidden'); } else { document.getElementById('md-encomenda-opt').classList.add('hidden'); }
             
@@ -495,8 +503,7 @@
         window.mudarQtd = (v) => { 
             let novaQtd = qtdSel + v;
             if(novaQtd >= 1) {
-                // TRAVA DE ESTOQUE NO MODAL
-                if (!prodSel.sobEncomenda && prodSel.estoque !== null && prodSel.estoque !== undefined) {
+                if (prodSel.estoque !== null && prodSel.estoque !== undefined) {
                     if (novaQtd > prodSel.estoque) {
                         return mostrarNotificacao(`Apenas ${prodSel.estoque} unidades em estoque!`, 'erro');
                     }
@@ -718,20 +725,17 @@
                     await updateDoc(cupomRef, { usos: increment(1) });
                 }
 
-                // DEDUZIR ESTOQUE DOS PRODUTOS
                 for (let item of carrinho) {
-                    if (!item.sobEncomenda) {
-                        try {
-                            const prodRef = doc(db, COLLECTIONS.PRODUTOS, item.id);
-                            const pData = produtos.find(p => p.id === item.id);
-                            if (pData && pData.estoque !== null && pData.estoque !== undefined) {
-                                await updateDoc(prodRef, {
-                                    estoque: increment(-item.qtd)
-                                });
-                            }
-                        } catch (err) {
-                            console.error("Erro ao baixar estoque", err);
+                    try {
+                        const prodRef = doc(db, COLLECTIONS.PRODUTOS, item.id);
+                        const pData = produtos.find(p => p.id === item.id);
+                        if (pData && pData.estoque !== null && pData.estoque !== undefined) {
+                            await updateDoc(prodRef, {
+                                estoque: increment(-item.qtd)
+                            });
                         }
+                    } catch (err) {
+                        console.error("Erro ao baixar estoque", err);
                     }
                 }
 
