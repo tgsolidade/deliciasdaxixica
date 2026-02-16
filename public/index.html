@@ -58,9 +58,11 @@
         .preco-antigo { text-decoration: line-through; color: #9ca3af; font-size: 0.8rem; margin-right: 5px; }
         .preco-novo { color: #dc2626; }
         .btn-add { width: 32px; height: 32px; border-radius: 50%; background: var(--cor-primaria); color: white; border: none; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .badge-encomenda { position: absolute; top: 8px; right: 8px; background: #2563eb; color: white; font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; }
-        .tag-esgotado { color: #ef4444; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-top: -5px; margin-bottom: 5px; display: block; }
         
+        .badge-encomenda { position: absolute; top: 8px; right: 8px; background: #2563eb; color: white; font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; }
+        .badge-destaque { position: absolute; top: 8px; left: 8px; background: #ea580c; color: white; font-size: 0.7rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10; }
+        
+        .tag-esgotado { color: #ef4444; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; margin-top: -5px; margin-bottom: 5px; display: block; }
         .badge-estoque { font-size: 0.75rem; color: #6b7280; font-weight: 600; margin-top: -5px; margin-bottom: 5px; display: block; }
         .badge-estoque.baixo { color: #ea580c; font-weight: 700; }
 
@@ -281,7 +283,12 @@
             </div>
             
             <div id="md-obs-aviso" class="hidden" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 15px; font-weight: 600; padding: 10px; background: #fee2e2; border-radius: 8px; border: 1px solid #fecaca;">
-                ⚠️ Receita fechada: Este produto não permite alterações nos ingredientes.
+                ⚠️ Receita fechada: Este produto não permite adições ou trocas.
+            </div>
+
+            <div id="md-itens-removiveis-container" class="hidden" style="margin-bottom: 15px; background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px solid #fed7aa;">
+                <strong style="display:block; font-size:0.85rem; color:#c2410c; margin-bottom:8px;">Deseja retirar algum item?</strong>
+                <div id="md-lista-removiveis" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
 
             <textarea id="md-obs" class="form-textarea" placeholder="Observações? (Ex: Sem cebola, ponto da carne...)" rows="2" style="margin-bottom:15px;"></textarea>
@@ -402,6 +409,19 @@
             nav.innerHTML = ''; main.innerHTML = '';
             if(produtos.length === 0) { document.getElementById('sem-produtos').classList.remove('hidden'); return; }
             document.getElementById('sem-produtos').classList.add('hidden');
+            
+            // VERIFICA MAIS VENDIDOS E CRIA CATEGORIA NO TOPO
+            const maisVendidos = produtos.filter(p => p.maisVendido === true);
+            if (maisVendidos.length > 0) {
+                nav.innerHTML += `<li><a href="#cat-mais-vendidos" class="cat-btn" onclick="scrollCat(event, 'cat-mais-vendidos')">🔥 Mais Vendidos</a></li>`;
+                
+                const section = document.createElement('section'); section.id = `cat-mais-vendidos`; section.className = 'secao-categoria';
+                section.innerHTML = `<h2 class="secao-titulo">🔥 Mais Vendidos</h2><div class="produtos-grid"></div>`;
+                const grid = section.querySelector('.produtos-grid');
+                maisVendidos.forEach(p => grid.appendChild(criarCard(p)));
+                main.appendChild(section);
+            }
+
             const catsAtivas = categorias.filter(c => produtos.some(p => p.categoria === c.slug));
             catsAtivas.forEach(cat => {
                 nav.innerHTML += `<li><a href="#cat-${cat.slug}" class="cat-btn" onclick="scrollCat(event, 'cat-${cat.slug}')">${cat.nome}</a></li>`;
@@ -438,6 +458,7 @@
             const preco = (p.emPromocao && p.precoPromocional) ? p.precoPromocional : p.preco;
             const precoHtml = (p.emPromocao && p.precoPromocional) ? `<span class="preco-antigo">${formatarPreco(p.preco)}</span> <span class="preco-novo">${formatarPreco(preco)}</span>` : formatarPreco(preco);
             const badgeEnc = p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : '';
+            const badgeMaisVendido = p.maisVendido ? '<span class="badge-destaque">🔥 MAIS VENDIDO</span>' : '';
             const tagEsg = isEsgotado ? '<span class="tag-esgotado">Esgotado</span>' : '';
 
             let tagEstoque = '';
@@ -447,7 +468,7 @@
                 tagEstoque = `<span class="${classeEstoque}">${txtEstoque}</span>`;
             }
 
-            div.innerHTML = `${badgeEnc}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3>${tagEsg}${tagEstoque}<p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${btnTexto}</button></div></div>`;
+            div.innerHTML = `${badgeMaisVendido}${badgeEnc}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3>${tagEsg}${tagEstoque}<p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${btnTexto}</button></div></div>`;
             return div;
         }
 
@@ -481,17 +502,37 @@
             document.getElementById('md-img').src = p.imagemUrl;
             document.getElementById('md-qtd').textContent = 1;
             
-            // LÓGICA DE BLOQUEIO DE OBSERVAÇÕES
+            // LÓGICA DE BLOQUEIO DE OBSERVAÇÕES E ITENS REMOVÍVEIS
             const campoObs = document.getElementById('md-obs');
             const avisoObs = document.getElementById('md-obs-aviso');
+            const boxRemoviveis = document.getElementById('md-itens-removiveis-container');
+            const listaRemoviveis = document.getElementById('md-lista-removiveis');
+            
             campoObs.value = '';
+            listaRemoviveis.innerHTML = '';
             
             if (p.bloquearObs) {
                 campoObs.classList.add('hidden');
                 avisoObs.classList.remove('hidden');
+                
+                // Se a receita for fechada, checa se tem itens removíveis
+                if (p.itensRemoviveis && p.itensRemoviveis.length > 0) {
+                    p.itensRemoviveis.forEach(item => {
+                        listaRemoviveis.innerHTML += `
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: #4b5563; cursor: pointer;">
+                                <input type="checkbox" class="chk-removivel" value="${item}" style="width: 18px; height: 18px;">
+                                <span>Sem <b>${item}</b></span>
+                            </label>
+                        `;
+                    });
+                    boxRemoviveis.classList.remove('hidden');
+                } else {
+                    boxRemoviveis.classList.add('hidden');
+                }
             } else {
                 campoObs.classList.remove('hidden');
                 avisoObs.classList.add('hidden');
+                boxRemoviveis.classList.add('hidden');
             }
             
             if(p.sobEncomenda) { document.getElementById('md-encomenda-opt').classList.remove('hidden'); document.getElementById('md-check-enc').checked = false; document.getElementById('md-agendamento').classList.add('hidden'); } else { document.getElementById('md-encomenda-opt').classList.add('hidden'); }
@@ -528,13 +569,22 @@
             const precoNormal = prodSel.preco;
             const precoFinal = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
 
+            // CAPTURANDO OBSERVAÇÕES E ITENS REMOVIDOS
+            let obsFinal = document.getElementById('md-obs').value.trim();
+            if (prodSel.bloquearObs && prodSel.itensRemoviveis && prodSel.itensRemoviveis.length > 0) {
+                const removidos = Array.from(document.querySelectorAll('.chk-removivel:checked')).map(chk => chk.value);
+                if (removidos.length > 0) {
+                    obsFinal = "Retirar: " + removidos.join(', ');
+                }
+            }
+
             carrinho.push({ 
                 id: prodSel.id, 
                 nome: prodSel.nome, 
                 preco: precoFinal, 
                 precoNormal: precoNormal, 
                 qtd: qtdSel, 
-                obs: document.getElementById('md-obs').value, 
+                obs: obsFinal, 
                 sobEncomenda: prodSel.sobEncomenda || false, 
                 agendamento: agendamento 
             });
