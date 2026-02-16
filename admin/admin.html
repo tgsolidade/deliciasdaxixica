@@ -630,18 +630,36 @@
             if(filtrados.length === 0) document.getElementById('sem-pedidos').classList.remove('hidden');
             else document.getElementById('sem-pedidos').classList.add('hidden');
             const icons = {recebido:'🔵',em_preparo:'🟡',saiu_entrega:'🟣',entregue:'✅'};
+            
             filtrados.forEach(p => {
                 const card = document.createElement('div');
                 card.className = `pedido-card ${p.status}`;
                 card.id = `card-${p.uid}`; 
+                
                 const itens = p.itens?.map(i => {
                     const quantidade = i.qtd || i.quantidade || 1;
                     return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>
                             ${i.obs ? `<div style="font-size:0.8rem; color:#ef4444; margin-left: 10px;">${i.obs}</div>` : ''}`;
                 }).join('') || '';
-                let enderecoTexto = 'Retirada no Balcão';
+                
+                // NOVO: TRATAMENTO DO ENDEREÇO E COMPLEMENTO
+                let enderecoTexto = '🏪 Retirada no Balcão';
                 if(p.tipoEntrega === 'entrega' && p.endereco) {
                      enderecoTexto = `${p.endereco.logradouro||'Rua'}, ${p.endereco.numero||'SN'} - ${p.endereco.bairro||''}`;
+                     if(p.endereco.complemento) {
+                         enderecoTexto += ` (Comp: ${p.endereco.complemento})`;
+                     }
+                }
+
+                // NOVO: TRATAMENTO DO PAGAMENTO
+                let pagamentoTexto = 'Não informado';
+                if(p.pagamento) {
+                    if(p.pagamento.forma === 'pix') pagamentoTexto = '<strong style="color:#0369a1;">💠 PIX (Verificar Comprovante)</strong>';
+                    else if(p.pagamento.forma === 'cartao' || p.pagamento.forma === 'cartao_maquina') pagamentoTexto = '💳 Cartão na Entrega';
+                    else if(p.pagamento.forma === 'dinheiro') {
+                        pagamentoTexto = '💵 Dinheiro';
+                        if(p.pagamento.troco) pagamentoTexto += ` <strong style="color:#b45309;">(Levar troco para R$ ${p.pagamento.troco})</strong>`;
+                    }
                 }
                 
                 let cupomHtml = '';
@@ -654,10 +672,13 @@
                         <div><strong>#${p.idDisplay||p.id}</strong> <button class="btn-excluir" onclick="window.delPed('${p.uid}')">🗑️</button></div>
                         <span class="pedido-status status-${p.status}">${icons[p.status]||''} ${p.status}</span>
                     </div>
-                    <div class="pedido-info">
-                        <p>👤 ${p.cliente?.nome}</p>
-                        <p>📍 ${enderecoTexto}</p>
+                    
+                    <div class="pedido-info" style="background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #f3f4f6;">
+                        <p style="color: #1f2937; font-weight: 600; margin-bottom: 5px;">👤 ${p.cliente?.nome} <a href="https://wa.me/${(p.cliente?.telefone||'').replace(/\D/g,'')}" target="_blank" style="text-decoration:none; margin-left:5px;" title="Chamar no Whatsapp">📱<span style="font-weight: normal; color: #6b7280; font-size: 0.85rem; text-decoration: underline;">${p.cliente?.telefone || ''}</span></a></p>
+                        <p style="margin-bottom: 5px;">📍 ${enderecoTexto}</p>
+                        <p>💳 ${pagamentoTexto}</p>
                     </div>
+
                     <div class="pedido-itens">${itens}</div>
                     ${cupomHtml}
                     <div class="pedido-total"><span>Total</span><span class="pedido-total-valor">${formatarPreco(p.total||0)}</span></div>
@@ -666,7 +687,7 @@
                     </div>
                 `;
                 card.onclick = (e) => {
-                    if(e.target.closest('.status-option') || e.target.closest('.btn-excluir')) return;
+                    if(e.target.closest('.status-option') || e.target.closest('.btn-excluir') || e.target.closest('a')) return;
                     const dropdown = document.getElementById(`dd-${p.uid}`);
                     const estaFechado = !dropdown.classList.contains('active');
                     document.querySelectorAll('.pedido-card').forEach(c => { c.classList.remove('z-index-alto'); const dd = c.querySelector('.status-dropdown'); if(dd) dd.classList.remove('active'); });
@@ -702,7 +723,6 @@
                 snap.forEach(d => { cats.push(d.data()); sel.innerHTML += `<option value="${d.data().slug}">${d.data().nome}</option>`; });
             });
             
-            // EVENTO PARA MOSTRAR CAMPO DE ITENS REMOVÍVEIS QUANDO A OBSERVAÇÃO É BLOQUEADA
             document.getElementById('check-bloquear-obs').onchange = (e) => {
                 document.getElementById('box-itens-removiveis').classList.toggle('hidden', !e.target.checked);
             };
@@ -723,7 +743,6 @@
                     }
                 }
 
-                // TRATAMENTO ITENS REMOVIVEIS
                 const itensTexto = document.getElementById('itens-removiveis-prod').value;
                 const itensRemoviveisArray = itensTexto ? itensTexto.split(',').map(i => i.trim()).filter(i => i !== '') : [];
 
