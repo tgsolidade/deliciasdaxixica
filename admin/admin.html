@@ -45,9 +45,7 @@
 
         /* --- PEDIDOS --- */
         .pedido-card { background: white; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #ccc; transition: all 0.3s ease; cursor: pointer; position: relative; z-index: 1; }
-        
         .pedido-card.z-index-alto { z-index: 100 !important; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: scale(1.01); }
-        
         .pedido-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); transform: translateY(-2px); }
         .pedido-card.entregue { opacity: 0.6; border-left-color: #10b981; }
         .pedido-card.recebido { border-left-color: #3b82f6; }
@@ -348,12 +346,25 @@
                 
                 <div class="check-group"><input type="checkbox" id="check-encomenda"><label>Sob Encomenda</label></div>
                 
+                <div class="check-group" style="margin-top: 15px; border-color: #fdba74; background: #fff7ed;">
+                    <input type="checkbox" id="check-mais-vendido">
+                    <label style="color: #ea580c; font-weight: bold;">🔥 Produto Mais Vendido (Destacar no topo)</label>
+                </div>
+
                 <div class="check-group" style="margin-top: 15px; border-color: #fca5a5; background: #fef2f2;">
                     <input type="checkbox" id="check-bloquear-obs">
-                    <label style="color: #991b1b;">Bloquear Observações (Receita fechada - não permite alterações)</label>
+                    <label style="color: #991b1b;">Bloquear Observações Livres (Receita Fechada)</label>
                 </div>
                 
-                <button type="submit" class="btn btn-primario">Salvar</button>
+                <div class="form-group hidden" id="box-itens-removiveis" style="margin-top: 10px; border-left: 3px solid #fca5a5; padding-left: 10px;">
+                    <label style="color: #991b1b;">Itens que podem ser retirados (opcional)</label>
+                    <input type="text" id="itens-removiveis-prod" class="form-input" placeholder="Ex: Cebola, Picles, Tomate">
+                    <small style="color: #6b7280; font-size: 0.75rem; display: block; margin-top: 5px;">
+                        Separe por vírgula. Mesmo com a receita fechada, o cliente verá caixinhas para desmarcar esses itens.
+                    </small>
+                </div>
+                
+                <button type="submit" class="btn btn-primario" style="margin-top: 20px;">Salvar</button>
             </form>
         </div>
     </div>
@@ -577,33 +588,25 @@
             });
         }
 
-        // --- PEDIDOS (AGORA COM ALERTA SONORO 🔔) ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
-        let primeiraCargaPedidos = true; // Impede que toque som para pedidos velhos no login
+        let primeiraCargaPedidos = true; 
 
         function initPedidos() {
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snap) => {
-                
-                // LÓGICA DO ALERTA SONORO
                 if (!primeiraCargaPedidos) {
                     snap.docChanges().forEach(change => {
-                        // Verifica se o Firebase avisou que um documento NOVO foi adicionado
                         if (change.type === 'added') {
-                            // Toca o som (Link padrão do Google)
                             const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
                             audio.play().catch(e => console.log('Áudio bloqueado pelo navegador', e));
-                            
-                            // Dispara um toast de aviso
                             window.mostrarNotificacao('🔔 NOVO PEDIDO CHEGOU!', 'sucesso');
                         }
                     });
                 }
-                primeiraCargaPedidos = false; // Após a primeira leitura, ativa o alarme
+                primeiraCargaPedidos = false; 
 
                 todosPedidos = [];
                 snap.forEach(d => todosPedidos.push({ uid: d.id, ...d.data() }));
                 
-                // Sort com tratamento de segurança caso a data venha nula no milissegundo exato
                 todosPedidos.sort((a,b) => {
                     const dataA = a.criadoEm?.toDate ? a.criadoEm.toDate() : new Date();
                     const dataB = b.criadoEm?.toDate ? b.criadoEm.toDate() : new Date();
@@ -633,7 +636,8 @@
                 card.id = `card-${p.uid}`; 
                 const itens = p.itens?.map(i => {
                     const quantidade = i.qtd || i.quantidade || 1;
-                    return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>`;
+                    return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>
+                            ${i.obs ? `<div style="font-size:0.8rem; color:#ef4444; margin-left: 10px;">${i.obs}</div>` : ''}`;
                 }).join('') || '';
                 let enderecoTexto = 'Retirada no Balcão';
                 if(p.tipoEntrega === 'entrega' && p.endereco) {
@@ -697,6 +701,12 @@
                 const sel = document.getElementById('cat-prod'); sel.innerHTML = '<option>Selecione...</option>'; cats = [];
                 snap.forEach(d => { cats.push(d.data()); sel.innerHTML += `<option value="${d.data().slug}">${d.data().nome}</option>`; });
             });
+            
+            // EVENTO PARA MOSTRAR CAMPO DE ITENS REMOVÍVEIS QUANDO A OBSERVAÇÃO É BLOQUEADA
+            document.getElementById('check-bloquear-obs').onchange = (e) => {
+                document.getElementById('box-itens-removiveis').classList.toggle('hidden', !e.target.checked);
+            };
+
             document.getElementById('form-produto').onsubmit = async (e) => {
                 e.preventDefault();
                 
@@ -713,6 +723,10 @@
                     }
                 }
 
+                // TRATAMENTO ITENS REMOVIVEIS
+                const itensTexto = document.getElementById('itens-removiveis-prod').value;
+                const itensRemoviveisArray = itensTexto ? itensTexto.split(',').map(i => i.trim()).filter(i => i !== '') : [];
+
                 const d = {
                     categoria: document.getElementById('cat-prod').value,
                     imagemUrl: converterUrlImagem(urlBruta),
@@ -723,8 +737,11 @@
                     emPromocao: isPromo,
                     precoPromocional: isPromo ? precoPromo : null,
                     estoque: vEstoque ? parseInt(vEstoque) : null,
-                    bloquearObs: document.getElementById('check-bloquear-obs').checked
+                    bloquearObs: document.getElementById('check-bloquear-obs').checked,
+                    maisVendido: document.getElementById('check-mais-vendido').checked,
+                    itensRemoviveis: itensRemoviveisArray
                 };
+                
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
                 else await addDoc(collection(db, COLLECTIONS.PRODUTOS), {...d, criadoEm: new Date()});
                 window.mostrarNotificacao('Salvo','sucesso'); window.fecharModal('modal-produto');
@@ -749,6 +766,7 @@
                     }
 
                     const infoObs = p.bloquearObs ? `<div style="font-size:0.75rem; color:#ef4444; margin-top:2px;">⚠️ Receita Fechada</div>` : '';
+                    const tagMaisVendido = p.maisVendido ? `<div style="font-size:0.75rem; color:#ea580c; font-weight:bold; margin-top:2px;">🔥 Mais Vendido</div>` : '';
 
                     card.innerHTML = `
                     <img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'">
@@ -757,6 +775,7 @@
                         <div>${formatarPreco(p.preco)}</div>
                         ${infoEstoque}
                         ${infoObs}
+                        ${tagMaisVendido}
                     </div>
                     <div class="produto-admin-acoes">
                         <button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button>
@@ -776,9 +795,12 @@
             document.getElementById('check-encomenda').checked = p.sobEncomenda;
             
             document.getElementById('check-bloquear-obs').checked = p.bloquearObs || false;
+            document.getElementById('check-mais-vendido').checked = p.maisVendido || false;
+            document.getElementById('itens-removiveis-prod').value = p.itensRemoviveis ? p.itensRemoviveis.join(', ') : '';
             
             document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
             document.getElementById('box-estoque').classList.remove('hidden');
+            document.getElementById('box-itens-removiveis').classList.toggle('hidden', !p.bloquearObs);
 
             document.getElementById('modal-produto').classList.add('active');
         };
@@ -845,7 +867,12 @@
             document.getElementById('detalhes-prod').value = ''; 
             document.getElementById('box-estoque').classList.remove('hidden'); 
             document.getElementById('box-promo').classList.add('hidden'); 
+            
             document.getElementById('check-bloquear-obs').checked = false;
+            document.getElementById('check-mais-vendido').checked = false;
+            document.getElementById('box-itens-removiveis').classList.add('hidden');
+            document.getElementById('itens-removiveis-prod').value = '';
+
             document.getElementById('modal-produto').classList.add('active'); 
         };
         document.getElementById('btn-nova-categoria').onclick = () => document.getElementById('modal-categoria').classList.add('active');
