@@ -213,6 +213,10 @@
                     <canvas id="qr-code" style="width: 150px; border: 4px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px;"></canvas>
                     <div id="pix-code-text" style="font-size: 0.7rem; word-break: break-all; background: #f0fdf4; padding: 5px; border-radius: 4px; margin-top: 5px;"></div>
                     <button class="btn-outline" onclick="copiarPix()" style="margin-top: 5px; font-size: 0.8rem;">Copiar Código</button>
+                    
+                    <div style="background: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 8px; margin-top: 15px; font-weight: 600; font-size: 0.9rem; border: 1px dashed #7dd3fc;">
+                        📲 Para confirmar seu pedido, envie o comprovante no WhatsApp!
+                    </div>
                 </div>
                 <div id="box-dinheiro" class="hidden" style="margin-top: 10px;"><input type="number" id="troco" class="form-input" placeholder="Troco para quanto? (Ex: 50)"></div>
             </div>
@@ -410,7 +414,6 @@
             if(produtos.length === 0) { document.getElementById('sem-produtos').classList.remove('hidden'); return; }
             document.getElementById('sem-produtos').classList.add('hidden');
             
-            // VERIFICA MAIS VENDIDOS E CRIA CATEGORIA NO TOPO
             const maisVendidos = produtos.filter(p => p.maisVendido === true);
             if (maisVendidos.length > 0) {
                 nav.innerHTML += `<li><a href="#cat-mais-vendidos" class="cat-btn" onclick="scrollCat(event, 'cat-mais-vendidos')">🔥 Mais Vendidos</a></li>`;
@@ -502,7 +505,6 @@
             document.getElementById('md-img').src = p.imagemUrl;
             document.getElementById('md-qtd').textContent = 1;
             
-            // LÓGICA DE BLOQUEIO DE OBSERVAÇÕES E ITENS REMOVÍVEIS
             const campoObs = document.getElementById('md-obs');
             const avisoObs = document.getElementById('md-obs-aviso');
             const boxRemoviveis = document.getElementById('md-itens-removiveis-container');
@@ -515,7 +517,6 @@
                 campoObs.classList.add('hidden');
                 avisoObs.classList.remove('hidden');
                 
-                // Se a receita for fechada, checa se tem itens removíveis
                 if (p.itensRemoviveis && p.itensRemoviveis.length > 0) {
                     p.itensRemoviveis.forEach(item => {
                         listaRemoviveis.innerHTML += `
@@ -569,7 +570,6 @@
             const precoNormal = prodSel.preco;
             const precoFinal = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
 
-            // CAPTURANDO OBSERVAÇÕES E ITENS REMOVIDOS
             let obsFinal = document.getElementById('md-obs').value.trim();
             if (prodSel.bloquearObs && prodSel.itensRemoviveis && prodSel.itensRemoviveis.length > 0) {
                 const removidos = Array.from(document.querySelectorAll('.chk-removivel:checked')).map(chk => chk.value);
