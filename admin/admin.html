@@ -623,10 +623,41 @@
 
         function renderPedidos() {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
+            
+            // --- LÓGICA DE CONTAGEM DE STATUS ---
+            let contagens = {
+                todos: 0,
+                recebido: 0,
+                em_preparo: 0,
+                saiu_entrega: 0,
+                entregue: 0
+            };
+
+            todosPedidos.forEach(p => {
+                // Conta o status específico
+                if(contagens[p.status] !== undefined) {
+                    contagens[p.status]++;
+                }
+                
+                // Se NÃO for 'entregue', soma no contador 'todos'
+                if(p.status !== 'entregue') {
+                     contagens.todos++;
+                }
+            });
+
+            // Atualiza o HTML dos contadores (as bolinhas)
+            document.getElementById('count-todos').textContent = contagens.todos;
+            document.getElementById('count-recebido').textContent = contagens.recebido;
+            document.getElementById('count-em_preparo').textContent = contagens.em_preparo;
+            document.getElementById('count-saiu_entrega').textContent = contagens.saiu_entrega;
+            document.getElementById('contador-entregues').textContent = contagens.entregue;
+            // ------------------------------------
+
             let filtrados = todosPedidos.filter(p => {
                 if(!mostrarEntregues && p.status === 'entregue') return false;
-                return filtro === 'todos' || p.status === filtro;
+                return filtro === 'todos' ? (p.status !== 'entregue') : p.status === filtro;
             });
+            
             if(filtrados.length === 0) document.getElementById('sem-pedidos').classList.remove('hidden');
             else document.getElementById('sem-pedidos').classList.add('hidden');
             const icons = {recebido:'🔵',em_preparo:'🟡',saiu_entrega:'🟣',entregue:'✅'};
