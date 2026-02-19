@@ -936,21 +936,25 @@
         window.copiarPix = () => { navigator.clipboard.writeText(pixPayload); mostrarNotificacao('Código copiado!', 'sucesso'); };
 
         // =====================================================
-        // FUNÇÃO PIX CORRIGIDA
-        // Correção: normalizar ANTES de truncar para evitar
-        // diacríticos soltos (ex: ã → a + combining tilde)
-        // que alteram o comprimento real do campo e quebram
-        // o CRC16, tornando o copia-e-cola inválido.
+        // FUNÇÃO PIX CORRIGIDA E BLINDADA
+        // Correção: Limpa CPF/CNPJ/Telefone (remove pontos, traços, espaços)
+        // e normaliza nomes para evitar erros de leitura no banco.
         // =====================================================
         function gerarPayloadPix(chavePix, nome, cidade, valorFormatado) {
-            const chave = chavePix.trim();
+            // 1. Limpeza da Chave (Remove espaços e caracteres invisíveis)
+            let chave = (chavePix || '').trim();
+            chave = chave.replace(/\s+/g, '');
+            
+            // Se for CPF, CNPJ ou Telefone, arranca pontos e traços
+            if (!chave.includes('@') && !chave.match(/[a-zA-Z]/)) {
+                chave = chave.replace(/[^0-9+]/g, '');
+            }
 
-            // Normaliza ANTES de truncar: remove marcas diacríticas primeiro,
-            // depois limpa caracteres especiais, depois trunca.
+            // 2. Normaliza Nomes
             const nomeLimpo = (nome || 'Loja')
                 .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, '')   // remove só as marcas diacríticas
-                .replace(/[^a-zA-Z0-9 ]/g, '')     // remove caracteres especiais restantes
+                .replace(/[\u0300-\u036f]/g, '')   
+                .replace(/[^a-zA-Z0-9 ]/g, '')     
                 .substring(0, 25)
                 .trim() || "Loja";
 
@@ -963,6 +967,7 @@
 
             const f = (id, val) => id + String(val.length).padStart(2, '0') + val;
 
+            // Mantido maiúsculo pois você confirmou que os bancos liam assim na versão antiga
             const infoMerchant = f('00', 'BR.GOV.BCB.PIX') + f('01', chave);
             const dadosAdicionais = f('05', '***');
 
@@ -979,7 +984,7 @@
                 '6304'
             ].join('');
 
-            // CRC16/CCITT-FALSE (padrão EMVCo / BCB)
+            // CRC16/CCITT-FALSE
             let crc = 0xFFFF;
             for (let i = 0; i < payloadSemCrc.length; i++) {
                 crc ^= (payloadSemCrc.charCodeAt(i) << 8);
@@ -987,7 +992,7 @@
                     crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
                 }
             }
-            return payloadSemCrc + crc.toString(16).toUpperCase().padStart(4, '0');
+            return payloadSemCrc + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
         }
     </script>
 </body>
