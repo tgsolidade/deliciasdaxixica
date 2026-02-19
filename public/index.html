@@ -902,7 +902,6 @@
         window.fecharModal = (id) => document.getElementById(id).classList.remove('active');
         window.buscarCep = async (cep) => { if(validarCEP(cep)) { const end = await buscarEnderecoPorCEP(cep); if(end) { document.getElementById('endereco').value = end.logradouro; document.getElementById('bairro').value = end.bairro; document.getElementById('cidade').value = end.cidade; document.getElementById('numero').focus(); } } }
         
-        // --- NOVA FUNÇÃO PARA COPIAR A CHAVE MANUAL ---
         window.copiarChaveManual = () => {
             if (configLoja.chavePix) {
                 navigator.clipboard.writeText(configLoja.chavePix);
@@ -912,7 +911,7 @@
 
         let pixPayload = ''; 
         
-        // --- FUNÇÃO GERAR PIX ATUALIZADA ---
+        // --- FUNÇÃO GERAR PIX ATUALIZADA E CORRIGIDA ---
         function gerarPix(v) { 
             if(!configLoja.chavePix || v<=0) return; 
 
@@ -920,7 +919,11 @@
             const tipo = configLoja.tipoChavePix || "Chave"; 
             msgManual.innerHTML = `PIX ${tipo}: <span style="color:var(--cor-primaria)">${configLoja.chavePix}</span>`;
 
-            const p = gerarPayloadPixString(configLoja.chavePix, configLoja.nomeBeneficiario||'Loja', configLoja.cidadeBeneficiario||'Cidade', v.toFixed(2)); 
+            // Utiliza o nome da loja que vem do Firebase, ou um padrão seguro.
+            const nomeLoja = configLoja.nome || 'Restaurante';
+            const cidadeLoja = 'Brasil';
+
+            const p = gerarPayloadPix(configLoja.chavePix, nomeLoja, cidadeLoja, v.toFixed(2)); 
             pixPayload = p; 
             
             new QRious({ 
@@ -932,9 +935,40 @@
             document.getElementById('pix-code-text').textContent = p; 
         }
 
-        window.copiarPix = () => { navigator.clipboard.writeText(pixPayload); mostrarNotificacao('Copiado!', 'sucesso'); };
-        function gerarPayloadPixString(chave, nome, cidade, valor) { const n=nome.substring(0,25).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(); const c=cidade.substring(0,15).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(); const p=["000201","26",(("0014BR.GOV.BCB.PIX01"+chave.length.toString().padStart(2,'0')+chave).length).toString().padStart(2,'0'),"0014BR.GOV.BCB.PIX01"+chave.length.toString().padStart(2,'0')+chave,"52040000","5303986","54"+valor.length.toString().padStart(2,'0')+valor,"5802BR","59"+n.length.toString().padStart(2,'0')+n,"60"+c.length.toString().padStart(2,'0')+c,"62070503***","6304"].join(""); return p+crc16(p); }
-        function crc16(p) { let c=0xFFFF; for(let i=0;i<p.length;i++){ c^=p.charCodeAt(i)<<8; for(let j=0;j<8;j++) if((c&0x8000)!==0) c=(c<<1)^0x1021; else c=c<<1; } return (c&0xFFFF).toString(16).toUpperCase().padStart(4,"0"); }
+        window.copiarPix = () => { navigator.clipboard.writeText(pixPayload); mostrarNotificacao('Código copiado!', 'sucesso'); };
+
+        function gerarPayloadPix(chavePix, nome, cidade, valorFormatado) {
+            // Tratamento de segurança nas strings para não quebrar o tamanho do EMVCo
+            const chave = chavePix.trim();
+            const nomeLimpo = nome.substring(0, 25).normalize("NFD").replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Loja";
+            const cidadeLimpa = cidade.substring(0, 15).normalize("NFD").replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Cidade";
+
+            // Montador automático que padroniza os campos em (ID + Tamanho exato + Valor)
+            const f = (id, val) => id + String(val.length).padStart(2, '0') + val;
+
+            const p00 = f('00', '01');
+            const p26 = f('26', f('00', 'br.gov.bcb.pix') + f('01', chave));
+            const p52 = f('52', '0000');
+            const p53 = f('53', '986');
+            const p54 = f('54', valorFormatado);
+            const p58 = f('58', 'BR');
+            const p59 = f('59', nomeLimpo);
+            const p60 = f('60', cidadeLimpa);
+            const p62 = f('62', f('05', '***'));
+
+            const payloadSemCrc = p00 + p26 + p52 + p53 + p54 + p58 + p59 + p60 + p62 + "6304";
+            
+            // Cálculo perfeito do CRC16
+            let crc = 0xFFFF;
+            for (let i = 0; i < payloadSemCrc.length; i++) {
+                crc ^= (payloadSemCrc.charCodeAt(i) << 8);
+                for (let j = 0; j < 8; j++) {
+                    if ((crc & 0x8000) !== 0) crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+                    else crc = (crc << 1) & 0xFFFF;
+                }
+            }
+            return payloadSemCrc + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+        }
     </script>
 </body>
 </html>
