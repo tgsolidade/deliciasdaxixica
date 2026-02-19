@@ -911,7 +911,6 @@
 
         let pixPayload = ''; 
         
-        // --- FUNÇÃO GERAR PIX ATUALIZADA E CORRIGIDA ---
         function gerarPix(v) { 
             if(!configLoja.chavePix || v<=0) return; 
 
@@ -919,7 +918,6 @@
             const tipo = configLoja.tipoChavePix || "Chave"; 
             msgManual.innerHTML = `PIX ${tipo}: <span style="color:var(--cor-primaria)">${configLoja.chavePix}</span>`;
 
-            // Utiliza o nome da loja que vem do Firebase, ou um padrão seguro.
             const nomeLoja = configLoja.nome || 'Restaurante';
             const cidadeLoja = 'Brasil';
 
@@ -937,38 +935,59 @@
 
         window.copiarPix = () => { navigator.clipboard.writeText(pixPayload); mostrarNotificacao('Código copiado!', 'sucesso'); };
 
+        // =====================================================
+        // FUNÇÃO PIX CORRIGIDA
+        // Correção: normalizar ANTES de truncar para evitar
+        // diacríticos soltos (ex: ã → a + combining tilde)
+        // que alteram o comprimento real do campo e quebram
+        // o CRC16, tornando o copia-e-cola inválido.
+        // =====================================================
         function gerarPayloadPix(chavePix, nome, cidade, valorFormatado) {
-            // Tratamento de segurança nas strings para não quebrar o tamanho do EMVCo
             const chave = chavePix.trim();
-            const nomeLimpo = nome.substring(0, 25).normalize("NFD").replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Loja";
-            const cidadeLimpa = cidade.substring(0, 15).normalize("NFD").replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Cidade";
 
-            // Montador automático que padroniza os campos em (ID + Tamanho exato + Valor)
+            // Normaliza ANTES de truncar: remove marcas diacríticas primeiro,
+            // depois limpa caracteres especiais, depois trunca.
+            const nomeLimpo = (nome || 'Loja')
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, '')   // remove só as marcas diacríticas
+                .replace(/[^a-zA-Z0-9 ]/g, '')     // remove caracteres especiais restantes
+                .substring(0, 25)
+                .trim() || "Loja";
+
+            const cidadeLimpa = (cidade || 'Brasil')
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-zA-Z0-9 ]/g, '')
+                .substring(0, 15)
+                .trim() || "Brasil";
+
             const f = (id, val) => id + String(val.length).padStart(2, '0') + val;
 
-            const p00 = f('00', '01');
-            // AQUI ESTÁ A CORREÇÃO: BR.GOV.BCB.PIX em MAIÚSCULO, igual ao seu código antigo!
-            const p26 = f('26', f('00', 'BR.GOV.BCB.PIX') + f('01', chave));
-            const p52 = f('52', '0000');
-            const p53 = f('53', '986');
-            const p54 = f('54', valorFormatado);
-            const p58 = f('58', 'BR');
-            const p59 = f('59', nomeLimpo);
-            const p60 = f('60', cidadeLimpa);
-            const p62 = f('62', f('05', '***'));
+            const infoMerchant = f('00', 'BR.GOV.BCB.PIX') + f('01', chave);
+            const dadosAdicionais = f('05', '***');
 
-            const payloadSemCrc = p00 + p26 + p52 + p53 + p54 + p58 + p59 + p60 + p62 + "6304";
-            
-            // Cálculo perfeito do CRC16
+            const payloadSemCrc = [
+                f('00', '01'),
+                f('26', infoMerchant),
+                f('52', '0000'),
+                f('53', '986'),
+                f('54', valorFormatado),
+                f('58', 'BR'),
+                f('59', nomeLimpo),
+                f('60', cidadeLimpa),
+                f('62', dadosAdicionais),
+                '6304'
+            ].join('');
+
+            // CRC16/CCITT-FALSE (padrão EMVCo / BCB)
             let crc = 0xFFFF;
             for (let i = 0; i < payloadSemCrc.length; i++) {
                 crc ^= (payloadSemCrc.charCodeAt(i) << 8);
                 for (let j = 0; j < 8; j++) {
-                    if ((crc & 0x8000) !== 0) crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
-                    else crc = (crc << 1) & 0xFFFF;
+                    crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
                 }
             }
-            return payloadSemCrc + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+            return payloadSemCrc + crc.toString(16).toUpperCase().padStart(4, '0');
         }
     </script>
 </body>
