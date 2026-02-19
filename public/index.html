@@ -947,7 +947,8 @@
             const f = (id, val) => id + String(val.length).padStart(2, '0') + val;
 
             const p00 = f('00', '01');
-            const p26 = f('26', f('00', 'br.gov.bcb.pix') + f('01', chave));
+            // AQUI ESTÁ A CORREÇÃO: BR.GOV.BCB.PIX em MAIÚSCULO, igual ao seu código antigo!
+            const p26 = f('26', f('00', 'BR.GOV.BCB.PIX') + f('01', chave));
             const p52 = f('52', '0000');
             const p53 = f('53', '986');
             const p54 = f('54', valorFormatado);
