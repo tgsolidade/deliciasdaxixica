@@ -38,6 +38,11 @@
         /* --- DASHBOARD & OUTROS --- */
         .card-faturamento { background: #f0fdf4; border: 2px solid #bbf7d0; transform: scale(1.02); transition: 0.3s; }
         .card-faturamento:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(22, 163, 74, 0.2); }
+        
+        /* Novo efeito para o card clicável de Pedidos */
+        .card-clicavel { cursor: pointer; transition: 0.3s; border: 2px solid transparent; }
+        .card-clicavel:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-color: #e5e7eb; }
+
         .valor-gigante { font-size: 3.5rem; font-weight: 800; color: #16a34a; letter-spacing: -1px; margin: 10px 0; line-height: 1; }
         .valor-normal { font-size: 2.5rem; font-weight: 700; color: #1f2937; }
         .titulo-card { font-size: 1.1rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
@@ -167,7 +172,7 @@
                 <ul class="sidebar-menu">
                     <li><a href="#" onclick="window.navegar('dashboard', this)" class="menu-link active"><span class="icon">📊</span><span>Dashboard</span></a></li>
                     <li><a href="#" onclick="window.navegar('produtos', this)" class="menu-link"><span class="icon">🍔</span><span>Produtos</span></a></li>
-                    <li><a href="#" onclick="window.navegar('pedidos', this)" class="menu-link"><span class="icon">📦</span><span>Pedidos</span></a></li>
+                    <li><a href="#" onclick="window.navegar('pedidos', this)" class="menu-link" id="link-menu-pedidos"><span class="icon">📦</span><span>Pedidos</span></a></li>
                     <li><a href="#" onclick="window.navegar('cupons', this)" class="menu-link"><span class="icon">🎫</span><span>Cupons</span></a></li>
                     <li><a href="#" onclick="window.navegar('configuracoes', this)" class="menu-link"><span class="icon">⚙️</span><span>Configurações</span></a></li>
                     <li style="margin-top: 1rem; border-top: 1px solid #e5e7eb; padding-top: 1rem;">
@@ -196,23 +201,17 @@
                         </div>
                         <div class="icon-destaque">💵</div>
                     </div>
-                    <div class="stat-card">
+                    
+                    <div class="stat-card card-clicavel" onclick="document.getElementById('link-menu-pedidos').click()" title="Ir para Gestão de Pedidos">
                         <div>
                             <span class="titulo-card">Pedidos Novos</span>
                             <div class="valor-normal" id="pedidos-hoje">0</div>
-                            <small>Criados hoje</small>
+                            <small style="color: #2563eb; font-weight: 600;">Clique para ver os pedidos 👉</small>
                         </div>
                         <div class="icon-destaque" style="color: #059669;">📦</div>
                     </div>
-                    <div class="stat-card">
-                        <div>
-                            <span class="titulo-card">Fila Pendente</span>
-                            <div class="valor-normal" style="color: #ea580c;" id="pedidos-pendentes">0</div>
-                            <small>Para produzir/entregar</small>
-                        </div>
-                        <div class="icon-destaque">⏳</div>
+                    
                     </div>
-                </div>
 
                 <div style="margin-top: 3rem;">
                     <h3 style="margin-bottom: 1rem;">Últimas Vendas</h3>
@@ -522,7 +521,7 @@
                 });
                 document.getElementById('vendas-hoje').textContent = formatarPreco(fat);
                 document.getElementById('pedidos-hoje').textContent = qtd;
-                document.getElementById('pedidos-pendentes').textContent = pend;
+                
                 lista.sort((a, b) => b.criadoEm - a.criadoEm);
                 let html = '';
                 lista.slice(0, 5).forEach(p => {
