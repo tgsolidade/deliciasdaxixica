@@ -424,10 +424,8 @@
             if(produtos.length === 0) { document.getElementById('sem-produtos').classList.remove('hidden'); return; }
             document.getElementById('sem-produtos').classList.add('hidden');
             
-            // --- CÓDIGO INJETADO: Ordena "Mais Vendidos" ---
             let maisVendidos = produtos.filter(p => p.maisVendido === true);
             if (maisVendidos.length > 0) {
-                // Jogando os esgotados para o final
                 maisVendidos.sort((a, b) => {
                     const aEsgotado = (a.estoque !== null && a.estoque !== undefined && a.estoque <= 0);
                     const bEsgotado = (b.estoque !== null && b.estoque !== undefined && b.estoque <= 0);
@@ -449,7 +447,6 @@
             catsAtivas.forEach(cat => {
                 nav.innerHTML += `<li><a href="#cat-${cat.slug}" class="cat-btn" onclick="scrollCat(event, 'cat-${cat.slug}')">${cat.nome}</a></li>`;
                 
-                // --- CÓDIGO INJETADO: Ordena Produtos da Categoria ---
                 let prodsCat = produtos.filter(p => p.categoria === cat.slug);
                 
                 prodsCat.sort((a, b) => {
@@ -665,7 +662,33 @@
         window.removeItem = (idx) => { carrinho.splice(idx, 1); salvarCarrinho(); };
         window.irParaCheckout = () => { if(carrinho.length === 0) return; fecharModal('modal-carrinho'); trocarTela('checkout'); atualizarResumoCheckout(); };
 
-        window.mudarEntrega = (t) => { tipoEntrega = t; document.getElementById('opt-entrega').className = `entrega-option ${t==='entrega'?'selected':''}`; document.getElementById('opt-retirada').className = `entrega-option ${t==='retirada'?'selected':''}`; if(t==='entrega') { document.getElementById('box-endereco').classList.remove('hidden'); document.getElementById('box-retirada').classList.add('hidden'); } else { document.getElementById('box-endereco').classList.add('hidden'); document.getElementById('box-retirada').classList.remove('hidden'); } atualizarResumoCheckout(); };
+        window.mudarEntrega = (t) => { 
+            tipoEntrega = t; 
+            document.getElementById('opt-entrega').className = `entrega-option ${t==='entrega'?'selected':''}`; 
+            document.getElementById('opt-retirada').className = `entrega-option ${t==='retirada'?'selected':''}`; 
+            if(t==='entrega') { 
+                document.getElementById('box-endereco').classList.remove('hidden'); 
+                document.getElementById('box-retirada').classList.add('hidden'); 
+            } else { 
+                document.getElementById('box-endereco').classList.add('hidden'); 
+                document.getElementById('box-retirada').classList.remove('hidden'); 
+            } 
+
+            // CIRURGIA: Se o cliente mudar a entrega e o cupom não for válido pra ela, remove o cupom!
+            if (cupomAplicado) {
+                const permiteEntrega = cupomAplicado.validoEntrega !== false;
+                const permiteRetirada = cupomAplicado.validoRetirada !== false;
+                if ((t === 'entrega' && !permiteEntrega) || (t === 'retirada' && !permiteRetirada)) {
+                    cupomAplicado = null;
+                    const msg = document.getElementById('msg-cupom');
+                    msg.textContent = 'Cupom removido (não vale para esta opção de entrega).';
+                    msg.className = 'cupom-msg erro';
+                    document.getElementById('input-cupom').value = '';
+                }
+            }
+            atualizarResumoCheckout(); 
+        };
+
         window.selPag = (t, el) => { pagSel = t; document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('box-pix').classList.add('hidden'); document.getElementById('box-dinheiro').classList.add('hidden'); if(t==='pix') { document.getElementById('box-pix').classList.remove('hidden'); atualizarResumoCheckout(); } else if(t==='dinheiro') { document.getElementById('box-dinheiro').classList.remove('hidden'); } };
 
         window.aplicarCupom = async () => {
@@ -674,7 +697,6 @@
             const msg = document.getElementById('msg-cupom');
             
             if(!codigo) return;
-
             msg.textContent = 'Verificando...'; msg.className = 'cupom-msg';
 
             try {
@@ -693,16 +715,27 @@
                         msg.textContent = 'Este cupom venceu.'; msg.className = 'cupom-msg erro';
                         cupomAplicado = null;
                     } else if (dados.usos >= dados.limite) {
-                        msg.textContent = 'Limite de uso deste cupom atingido.'; msg.className = 'cupom-msg erro';
+                        msg.textContent = 'Limite de uso atingido.'; msg.className = 'cupom-msg erro';
                         cupomAplicado = null;
                     } else {
-                        cupomAplicado = { id: docCupom.id, ...dados };
-                        msg.textContent = `Desconto de ${formatarPreco(dados.valor)} aplicado!`;
-                        msg.className = 'cupom-msg sucesso';
+                        // CIRURGIA: Verifica a regra de entrega na hora de aplicar
+                        const permiteEntrega = dados.validoEntrega !== false; 
+                        const permiteRetirada = dados.validoRetirada !== false;
+
+                        if (tipoEntrega === 'entrega' && !permiteEntrega) {
+                            msg.textContent = 'Este cupom é válido apenas para Retirada no balcão.'; msg.className = 'cupom-msg erro';
+                            cupomAplicado = null;
+                        } else if (tipoEntrega === 'retirada' && !permiteRetirada) {
+                            msg.textContent = 'Este cupom é válido apenas para pedidos com Entrega.'; msg.className = 'cupom-msg erro';
+                            cupomAplicado = null;
+                        } else {
+                            cupomAplicado = { id: docCupom.id, ...dados };
+                            msg.textContent = `Desconto de ${formatarPreco(dados.valor)} aplicado!`;
+                            msg.className = 'cupom-msg sucesso';
+                        }
                     }
                 }
                 atualizarResumoCheckout();
-
             } catch(e) {
                 console.error(e);
                 msg.textContent = 'Erro ao validar cupom.'; msg.className = 'cupom-msg erro';
