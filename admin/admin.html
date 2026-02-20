@@ -39,7 +39,6 @@
         .card-faturamento { background: #f0fdf4; border: 2px solid #bbf7d0; transform: scale(1.02); transition: 0.3s; }
         .card-faturamento:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(22, 163, 74, 0.2); }
         
-        /* Novo efeito para o card clicável de Pedidos */
         .card-clicavel { cursor: pointer; transition: 0.3s; border: 2px solid transparent; }
         .card-clicavel:hover { transform: scale(1.05); box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-color: #e5e7eb; }
 
@@ -210,8 +209,7 @@
                         </div>
                         <div class="icon-destaque" style="color: #059669;">📦</div>
                     </div>
-                    
-                    </div>
+                </div>
 
                 <div style="margin-top: 3rem;">
                     <h3 style="margin-bottom: 1rem;">Últimas Vendas</h3>
@@ -281,12 +279,13 @@
                                 <th>Valor (R$)</th>
                                 <th>Validade</th>
                                 <th>Usos</th>
+                                <th>Tipo</th>
                                 <th>Status</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody id="lista-cupons">
-                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                            <tr><td colspan="7" class="text-center">Carregando...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -395,6 +394,15 @@
                     <label>Limite de Usos (Qtd Total)</label>
                     <input type="number" id="cupom-limite" class="form-input" value="100" required>
                 </div>
+                
+                <div class="form-group">
+                    <label>Válido para:</label>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <label style="cursor: pointer; font-weight: 600; color: #374151;"><input type="checkbox" id="cupom-entrega" checked style="width: 18px; height: 18px;"> 🛵 Entrega</label>
+                        <label style="cursor: pointer; font-weight: 600; color: #374151;"><input type="checkbox" id="cupom-retirada" checked style="width: 18px; height: 18px;"> 🏪 Retirada</label>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primario">Criar Cupom</button>
             </form>
         </div>
@@ -623,7 +631,6 @@
         function renderPedidos() {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
             
-            // --- LÓGICA DE CONTAGEM DE STATUS ---
             let contagens = { todos: 0, recebido: 0, em_preparo: 0, saiu_entrega: 0, entregue: 0 };
 
             todosPedidos.forEach(p => {
@@ -636,15 +643,12 @@
             document.getElementById('count-em_preparo').textContent = contagens.em_preparo;
             document.getElementById('count-saiu_entrega').textContent = contagens.saiu_entrega;
             document.getElementById('contador-entregues').textContent = contagens.entregue;
-            // ------------------------------------
 
-            // --- LÓGICA DE FILTRO CORRIGIDA ---
             let filtrados = todosPedidos.filter(p => {
                 if (!mostrarEntregues && p.status === 'entregue') return false;
                 if (filtro === 'todos') return true;
                 return p.status === filtro;
             });
-            // ------------------------------------
             
             if(filtrados.length === 0) document.getElementById('sem-pedidos').classList.remove('hidden');
             else document.getElementById('sem-pedidos').classList.add('hidden');
@@ -847,7 +851,7 @@
             onSnapshot(collection(db, 'cupons'), (snap) => {
                 const tbody = document.getElementById('lista-cupons');
                 tbody.innerHTML = '';
-                if(snap.empty) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum cupom cadastrado.</td></tr>'; return; }
+                if(snap.empty) { tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum cupom cadastrado.</td></tr>'; return; }
                 
                 snap.forEach(d => {
                     const c = { id: d.id, ...d.data() };
@@ -861,12 +865,17 @@
                     if (expirado) { statusClass = 'status-inativo'; statusText = 'EXPIRADO'; }
                     else if (esgotado) { statusClass = 'status-inativo'; statusText = 'ESGOTADO'; }
 
+                    let infoTipo = 'Ambos';
+                    if (c.validoEntrega && !c.validoRetirada) infoTipo = '🛵 Entrega';
+                    if (!c.validoEntrega && c.validoRetirada) infoTipo = '🏪 Retirada';
+
                     tbody.innerHTML += `
                         <tr>
                             <td style="font-weight:700;">${c.codigo}</td>
                             <td>${formatarPreco(c.valor)}</td>
                             <td>${new Date(c.validade).toLocaleDateString()}</td>
                             <td>${c.usos} / ${c.limite}</td>
+                            <td><span style="font-size:0.85rem; color:#4b5563;">${infoTipo}</span></td>
                             <td><span class="${statusClass}">${statusText}</span></td>
                             <td><button class="btn-excluir" onclick="window.delCupom('${c.id}')">🗑️</button></td>
                         </tr>
@@ -874,7 +883,10 @@
                 });
             });
 
-            document.getElementById('btn-novo-cupom').onclick = () => document.getElementById('modal-cupom').classList.add('active');
+            document.getElementById('btn-novo-cupom').onclick = () => {
+                document.getElementById('form-cupom').reset();
+                document.getElementById('modal-cupom').classList.add('active');
+            };
 
             document.getElementById('form-cupom').onsubmit = async (e) => {
                 e.preventDefault();
@@ -882,11 +894,19 @@
                 const valor = parseFloat(document.getElementById('cupom-valor').value);
                 const validade = document.getElementById('cupom-validade').value;
                 const limite = parseInt(document.getElementById('cupom-limite').value);
+                
+                const vEntrega = document.getElementById('cupom-entrega').checked;
+                const vRetirada = document.getElementById('cupom-retirada').checked;
 
                 if (!codigo || !valor || !validade || !limite) return window.mostrarNotificacao('Preencha tudo', 'erro');
+                if (!vEntrega && !vRetirada) return window.mostrarNotificacao('Marque pelo menos um tipo de entrega (Entrega ou Retirada)', 'erro');
 
                 try {
-                    await addDoc(collection(db, 'cupons'), { codigo, valor, validade, limite, usos: 0, criadoEm: new Date() });
+                    await addDoc(collection(db, 'cupons'), { 
+                        codigo, valor, validade, limite, usos: 0, 
+                        validoEntrega: vEntrega, validoRetirada: vRetirada, 
+                        criadoEm: new Date() 
+                    });
                     window.mostrarNotificacao('Cupom criado!', 'sucesso');
                     window.fecharModal('modal-cupom');
                     document.getElementById('form-cupom').reset();
