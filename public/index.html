@@ -258,6 +258,9 @@
                 <button class="btn-primario" onclick="finalizarPedido()" style="flex:2;">✅ Enviar Pedido</button>
             </div>
         </div>
+    </div> <div style="text-align: center; padding: 30px 15px 40px; margin-top: 20px; color: #9ca3af; font-size: 0.75rem; line-height: 1.6; border-top: 1px solid #e5e7eb;">
+        ⚡ Desenvolvido por <strong style="color: #6b7280; letter-spacing: 0.5px;">TGSolidade</strong><br>
+        &copy; 2026 TGSolidade. Todos os direitos reservados.
     </div>
 
     <div id="btn-carrinho" class="btn-flutuante hidden" onclick="abrirModalCarrinho()">
@@ -674,7 +677,6 @@
                 document.getElementById('box-retirada').classList.remove('hidden'); 
             } 
 
-            // CIRURGIA: Se o cliente mudar a entrega e o cupom não for válido pra ela, remove o cupom!
             if (cupomAplicado) {
                 const permiteEntrega = cupomAplicado.validoEntrega !== false;
                 const permiteRetirada = cupomAplicado.validoRetirada !== false;
@@ -718,7 +720,6 @@
                         msg.textContent = 'Limite de uso atingido.'; msg.className = 'cupom-msg erro';
                         cupomAplicado = null;
                     } else {
-                        // CIRURGIA: Verifica a regra de entrega na hora de aplicar
                         const permiteEntrega = dados.validoEntrega !== false; 
                         const permiteRetirada = dados.validoRetirada !== false;
 
