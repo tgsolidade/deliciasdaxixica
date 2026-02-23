@@ -55,7 +55,7 @@
         .pedido-card.recebido { border-left-color: #3b82f6; }
         .pedido-card.em_preparo { border-left-color: #f59e0b; }
         .pedido-card.saiu_entrega { border-left-color: #8b5cf6; }
-        .pedido-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .pedido-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;}
         .pedido-id { font-size: 1.25rem; font-weight: 700; color: #1f2937; }
         .pedido-status { padding: 0.375rem 0.875rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; display: inline-block; }
         .status-recebido { background: #dbeafe; color: #1e40af; }
@@ -184,17 +184,21 @@
         <main class="admin-content">
 
             <section id="view-dashboard" class="view-section active">
-                <div class="admin-header">
+                <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h1>📊 Visão Geral</h1>
-                        <p style="color: var(--cor-texto-secundario);">Resumo financeiro de <strong id="data-hoje">hoje</strong></p>
+                        <p style="color: var(--cor-texto-secundario);">Resumo financeiro do período</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: #4b5563;">Data:</label>
+                        <input type="date" id="filtro-data-dashboard" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
                     </div>
                 </div>
 
                 <div class="dashboard-grid">
                     <div class="stat-card card-faturamento">
                         <div>
-                            <span class="titulo-card">Faturamento Hoje</span>
+                            <span class="titulo-card">Faturamento</span>
                             <div class="valor-gigante" id="vendas-hoje">R$ 0,00</div>
                             <small style="color: #15803d; font-weight: 600;">💰 Sinais + Entregas</small>
                         </div>
@@ -203,7 +207,7 @@
                     
                     <div class="stat-card card-clicavel" onclick="document.getElementById('link-menu-pedidos').click()" title="Ir para Gestão de Pedidos">
                         <div>
-                            <span class="titulo-card">Pedidos Novos</span>
+                            <span class="titulo-card">Pedidos Recebidos</span>
                             <div class="valor-normal" id="pedidos-hoje">0</div>
                             <small style="color: #2563eb; font-weight: 600;">Clique para ver os pedidos 👉</small>
                         </div>
@@ -212,7 +216,7 @@
                 </div>
 
                 <div style="margin-top: 3rem;">
-                    <h3 style="margin-bottom: 1rem;">Últimas Vendas</h3>
+                    <h3 style="margin-bottom: 1rem;">Vendas do Período Selecionado</h3>
                     <div style="background: white; border-radius: 16px; padding: 1.5rem; overflow-x: auto;">
                         <table style="width: 100%; border-collapse: collapse; min-width: 600px;">
                             <thead>
@@ -245,8 +249,13 @@
             </section>
 
             <section id="view-pedidos" class="view-section">
-                <div class="admin-header">
+                <div class="admin-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <h1>📦 Gestão de Pedidos</h1>
+                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: #4b5563;">Filtrar Dia:</label>
+                        <input type="date" id="filtro-data-pedidos" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
+                        <button class="btn-outline" onclick="document.getElementById('filtro-data-pedidos').value=''; window.renderPedidos();" style="padding: 5px 10px; font-size: 0.8rem; height: 100%;">Ver Todos</button>
+                    </div>
                 </div>
                 <div style="margin-bottom: 2rem;">
                     <button class="toggle-entregues" id="btn-toggle-entregues">
@@ -260,7 +269,7 @@
                     </div>
                 </div>
                 <div id="loading-pedidos" class="flex-center" style="padding: 3rem;"><div class="loading"></div></div>
-                <div id="sem-pedidos" class="text-center hidden" style="padding: 3rem;"><h3>Nenhum pedido ativo</h3></div>
+                <div id="sem-pedidos" class="text-center hidden" style="padding: 3rem;"><h3>Nenhum pedido para esta data</h3></div>
                 <div id="lista-pedidos"></div>
             </section>
 
@@ -394,7 +403,6 @@
                     <label>Limite de Usos (Qtd Total)</label>
                     <input type="number" id="cupom-limite" class="form-input" value="100" required>
                 </div>
-                
                 <div class="form-group">
                     <label>Válido para:</label>
                     <div style="display: flex; gap: 15px; margin-top: 5px;">
@@ -402,7 +410,6 @@
                         <label style="cursor: pointer; font-weight: 600; color: #374151;"><input type="checkbox" id="cupom-retirada" checked style="width: 18px; height: 18px;"> 🏪 Retirada</label>
                     </div>
                 </div>
-
                 <button type="submit" class="btn btn-primario">Criar Cupom</button>
             </form>
         </div>
@@ -500,8 +507,17 @@
             document.getElementById('sidebar').classList.remove('open');
         };
 
+        // --- DASHBOARD ATUALIZADO COM FILTRO DE DATAS ---
+        let dashSnapshot = null;
         function initDashboard() {
-            document.getElementById('data-hoje').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+            const inputDataDashboard = document.getElementById('filtro-data-dashboard');
+            // Define o valor padrão do input de data para HOJE
+            if (!inputDataDashboard.value) {
+                inputDataDashboard.value = new Date().toISOString().split('T')[0];
+            }
+            // Quando a data mudar, recalcula o painel
+            inputDataDashboard.addEventListener('change', atualizarCardsDashboard);
+
             getDocs(collection(db, COLLECTIONS.CONFIGURACOES)).then(snap => {
                 if(!snap.empty) {
                     const d = snap.docs[0].data();
@@ -513,37 +529,55 @@
                     }
                 }
             });
+
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snapshot) => {
-                let fat = 0, qtd = 0, pend = 0, lista = [];
-                const hojeStr = new Date().toDateString();
-                snapshot.forEach(doc => {
-                    const p = { id: doc.id, ...doc.data() };
-                    const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
-                    const dEntr = p.dataEntregaRealizada?.toDate ? p.dataEntregaRealizada.toDate() : null;
-                    if (dCria && dCria.toDateString() === hojeStr) {
-                        qtd++; lista.push(p);
-                        fat += p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
-                    }
-                    if (['recebido', 'em_preparo', 'saiu_entrega'].includes(p.status)) pend++;
-                    if (p.isEncomenda && dEntr && dEntr.toDateString() === hojeStr && p.status === 'entregue') fat += (p.valorRestante || 0);
-                });
-                document.getElementById('vendas-hoje').textContent = formatarPreco(fat);
-                document.getElementById('pedidos-hoje').textContent = qtd;
-                
-                lista.sort((a, b) => b.criadoEm - a.criadoEm);
-                let html = '';
-                lista.slice(0, 5).forEach(p => {
-                    const stColor = p.status === 'entregue' ? '#10b981' : '#f59e0b';
-                    html += `<tr style="border-bottom: 1px solid #f3f4f6;">
-                        <td style="padding:1rem;">${p.idDisplay || p.id}</td>
-                        <td>${p.cliente?.nome || '-'}</td>
-                        <td style="color:${stColor}; font-weight:600;">${p.status}</td>
-                        <td>${p.isEncomenda ? 'Sinal 50%' : 'Total'}</td>
-                        <td style="color:#666;">${p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
-                    </tr>`;
-                });
-                document.getElementById('tabela-ultimos-pedidos').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:2rem;">Nada hoje.</td></tr>';
+                dashSnapshot = snapshot;
+                atualizarCardsDashboard();
             });
+        }
+
+        function atualizarCardsDashboard() {
+            if(!dashSnapshot) return;
+            const dataSelecionadaStr = document.getElementById('filtro-data-dashboard').value;
+            let dataRefStr = null;
+            
+            if (dataSelecionadaStr) {
+                const [ano, mes, dia] = dataSelecionadaStr.split('-');
+                dataRefStr = new Date(ano, mes - 1, dia).toDateString();
+            } else {
+                dataRefStr = new Date().toDateString(); // Segurança: fallback pra hoje
+            }
+
+            let fat = 0, qtd = 0, lista = [];
+            
+            dashSnapshot.forEach(doc => {
+                const p = { id: doc.id, ...doc.data() };
+                const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
+                const dEntr = p.dataEntregaRealizada?.toDate ? p.dataEntregaRealizada.toDate() : null;
+                
+                if (dCria && dCria.toDateString() === dataRefStr) {
+                    qtd++; lista.push(p);
+                    fat += p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
+                }
+                if (p.isEncomenda && dEntr && dEntr.toDateString() === dataRefStr && p.status === 'entregue') fat += (p.valorRestante || 0);
+            });
+
+            document.getElementById('vendas-hoje').textContent = formatarPreco(fat);
+            document.getElementById('pedidos-hoje').textContent = qtd;
+            
+            lista.sort((a, b) => b.criadoEm - a.criadoEm);
+            let html = '';
+            lista.slice(0, 5).forEach(p => {
+                const stColor = p.status === 'entregue' ? '#10b981' : '#f59e0b';
+                html += `<tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding:1rem;">${p.idDisplay || p.id}</td>
+                    <td>${p.cliente?.nome || '-'}</td>
+                    <td style="color:${stColor}; font-weight:600;">${p.status}</td>
+                    <td>${p.isEncomenda ? 'Sinal 50%' : 'Total'}</td>
+                    <td style="color:#666;">${p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
+                </tr>`;
+            });
+            document.getElementById('tabela-ultimos-pedidos').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:2rem;">Nenhum pedido nesta data.</td></tr>';
         }
 
         let configId = null;
@@ -595,10 +629,17 @@
             });
         }
 
+        // --- PEDIDOS ATUALIZADO COM FILTRO DE DATAS E HORA NO CARD ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
         let primeiraCargaPedidos = true; 
 
         function initPedidos() {
+            const inputDataPedidos = document.getElementById('filtro-data-pedidos');
+            if (!inputDataPedidos.value) {
+                inputDataPedidos.value = new Date().toISOString().split('T')[0];
+            }
+            inputDataPedidos.addEventListener('change', renderPedidos);
+
             onSnapshot(query(collection(db, COLLECTIONS.PEDIDOS)), (snap) => {
                 if (!primeiraCargaPedidos) {
                     snap.docChanges().forEach(change => {
@@ -628,12 +669,28 @@
             document.querySelectorAll('.filtro-btn').forEach(b => b.onclick = function() { document.querySelectorAll('.filtro-btn').forEach(x=>x.classList.remove('active')); this.classList.add('active'); filtro = this.dataset.filtro; renderPedidos(); });
         }
 
-        function renderPedidos() {
+        window.renderPedidos = () => {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
             
+            // Lógica do filtro de data
+            const dataSelecionada = document.getElementById('filtro-data-pedidos').value;
+            let dataRefStr = null;
+            if(dataSelecionada) {
+                const [ano, mes, dia] = dataSelecionada.split('-');
+                dataRefStr = new Date(ano, mes - 1, dia).toDateString();
+            }
+
+            let pedidosDoDia = todosPedidos;
+            if (dataRefStr) {
+                pedidosDoDia = todosPedidos.filter(p => {
+                    const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
+                    return dCria && dCria.toDateString() === dataRefStr;
+                });
+            }
+
             let contagens = { todos: 0, recebido: 0, em_preparo: 0, saiu_entrega: 0, entregue: 0 };
 
-            todosPedidos.forEach(p => {
+            pedidosDoDia.forEach(p => {
                 if(contagens[p.status] !== undefined) contagens[p.status]++;
                 if(p.status !== 'entregue') contagens.todos++;
             });
@@ -644,7 +701,7 @@
             document.getElementById('count-saiu_entrega').textContent = contagens.saiu_entrega;
             document.getElementById('contador-entregues').textContent = contagens.entregue;
 
-            let filtrados = todosPedidos.filter(p => {
+            let filtrados = pedidosDoDia.filter(p => {
                 if (!mostrarEntregues && p.status === 'entregue') return false;
                 if (filtro === 'todos') return true;
                 return p.status === filtro;
@@ -652,6 +709,7 @@
             
             if(filtrados.length === 0) document.getElementById('sem-pedidos').classList.remove('hidden');
             else document.getElementById('sem-pedidos').classList.add('hidden');
+            
             const icons = {recebido:'🔵',em_preparo:'🟡',saiu_entrega:'🟣',entregue:'✅'};
             
             filtrados.forEach(p => {
@@ -659,6 +717,10 @@
                 card.className = `pedido-card ${p.status}`;
                 card.id = `card-${p.uid}`; 
                 
+                // Formatação da Data e Hora para o Card
+                const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : new Date();
+                const dataFormatada = dCria.toLocaleDateString('pt-BR') + ' às ' + dCria.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
                 const itens = p.itens?.map(i => {
                     const quantidade = i.qtd || i.quantidade || 1;
                     return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>
@@ -690,8 +752,14 @@
 
                 card.innerHTML = `
                     <div class="pedido-header">
-                        <div><strong>#${p.idDisplay||p.id}</strong> <button class="btn-excluir" onclick="window.delPed('${p.uid}')">🗑️</button></div>
-                        <span class="pedido-status status-${p.status}">${icons[p.status]||''} ${p.status}</span>
+                        <div>
+                            <strong class="pedido-id">#${p.idDisplay||p.id}</strong> 
+                            <span style="font-size:0.8rem; font-weight:600; color:#6b7280; margin-left:10px; background:#f3f4f6; padding:2px 8px; border-radius:10px;">📅 ${dataFormatada}</span>
+                        </div>
+                        <div>
+                            <span class="pedido-status status-${p.status}">${icons[p.status]||''} ${p.status}</span>
+                            <button class="btn-excluir" onclick="window.delPed('${p.uid}')" style="margin-left:10px;" title="Excluir Pedido">🗑️</button>
+                        </div>
                     </div>
                     
                     <div class="pedido-info" style="background: #f9fafb; padding: 10px; border-radius: 8px; border: 1px solid #f3f4f6;">
