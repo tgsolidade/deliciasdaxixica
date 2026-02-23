@@ -201,37 +201,6 @@
             </div>
 
             <div class="checkout-card">
-                <h3 style="font-size: 1rem; margin-bottom: 10px;">💳 Pagamento</h3>
-                <div id="alert-sinal" class="hidden" style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px dashed #f97316; margin-bottom: 15px; font-size: 0.9rem; color: #c2410c;">⚠️ Pedido sob encomenda. Necessário <strong>Sinal de 50%</strong>.</div>
-                <div class="pagamento-grid">
-                    <div class="pagamento-option" onclick="selPag('pix', this)" data-val="pix">💠 PIX</div>
-                    <div class="pagamento-option" onclick="selPag('cartao', this)" data-val="cartao_maquina">💳 Cartão</div>
-                    <div class="pagamento-option" onclick="selPag('dinheiro', this)" data-val="dinheiro">💵 Dinheiro</div>
-                </div>
-                
-                <div id="box-pix" class="hidden" style="margin-top: 15px; text-align: center;">
-                    <p style="font-size: 0.9rem; color: #166534; margin-bottom: 5px;">Escaneie para pagar:</p>
-                    <canvas id="qr-code" style="width: 150px; border: 4px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px;"></canvas>
-                    
-                    <div id="pix-code-text" style="font-size: 0.7rem; word-break: break-all; background: #f0fdf4; padding: 5px; border-radius: 4px; margin-top: 5px;"></div>
-                    
-                    <button class="btn-outline" onclick="copiarPix()" style="margin-top: 5px; font-size: 0.8rem;">COPIAR PIX COPIA E COLA</button>
-                    
-                    <div id="pix-manual-container" style="margin-top: 15px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
-                        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">Ou use a chave manual:</p>
-                        <p id="msg-chave-manual" style="font-weight: 700; color: #1e293b; font-size: 0.95rem; margin-bottom: 5px;">PIX: (Carregando...)</p>
-                        <button class="btn-outline" onclick="copiarChaveManual()" style="font-size: 0.75rem; padding: 4px 10px;">COPIAR CHAVE</button>
-                    </div>
-
-                    <div style="background: #e0f2fe; color: #0369a1; padding: 10px; border-radius: 8px; margin-top: 15px; font-weight: 600; font-size: 0.9rem; border: 1px dashed #7dd3fc;">
-                        📲 Para confirmar seu pedido, envie o comprovante no WhatsApp!
-                    </div>
-                </div>
-
-                <div id="box-dinheiro" class="hidden" style="margin-top: 10px;"><input type="number" id="troco" class="form-input" placeholder="Troco para quanto? (Ex: 50)"></div>
-            </div>
-
-            <div class="checkout-card">
                 <h3 style="font-size: 1rem; margin-bottom: 10px;">🎫 Cupom de Desconto</h3>
                 <div class="cupom-box">
                     <input type="text" id="input-cupom" class="form-input" placeholder="Código">
@@ -244,7 +213,7 @@
                 <div class="resumo-linha resumo-desconto" id="chk-box-cupom" class="hidden"><span>Desconto Cupom</span> <span id="chk-valor-cupom">- R$ 0,00</span></div>
                 <div class="resumo-linha"><span>Entrega</span> <span id="chk-entrega">R$ 0,00</span></div>
                 <div class="resumo-total">
-                    <span id="lbl-total">Total</span>
+                    <span id="lbl-total">Total a Pagar</span>
                     <span id="chk-total">R$ 0,00</span>
                 </div>
                 <div id="resumo-sinal" class="hidden" style="margin-top: 10px; font-size: 0.95rem; border-top:1px solid #eee; padding-top:10px;">
@@ -253,12 +222,68 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 30px;">
-                <button class="btn" onclick="trocarTela('cardapio')" style="flex:1; background:#e5e7eb; color: #374151;">Voltar</button>
-                <button class="btn-primario" onclick="finalizarPedido()" style="flex:2;">✅ Enviar Pedido</button>
+            <div class="checkout-card">
+                <h3 style="font-size: 1rem; margin-bottom: 10px;">💳 Formas de pagamento</h3>
+                <div id="alert-sinal" class="hidden" style="background: #fff7ed; padding: 10px; border-radius: 8px; border: 1px dashed #f97316; margin-bottom: 15px; font-size: 0.9rem; color: #c2410c;">⚠️ Pedido sob encomenda. Necessário <strong>Sinal de 50%</strong>.</div>
+                
+                <div class="pagamento-grid">
+                    <div class="pagamento-option" onclick="selPag('pix', this)" data-val="pix">💠 PIX</div>
+                    <div class="pagamento-option" onclick="selPag('cartao', this)" data-val="cartao_maquina">💳 Cartão</div>
+                    <div class="pagamento-option" onclick="selPag('dinheiro', this)" data-val="dinheiro">💵 Dinheiro</div>
+                </div>
+                
+                <div id="box-pix" class="hidden" style="margin-top: 15px; text-align: center;">
+                    <p style="font-size: 0.9rem; color: #166534; margin-bottom: 5px;">Escaneie para pagar:</p>
+                    <canvas id="qr-code" style="width: 150px; border: 4px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 8px;"></canvas>
+                    
+                    <div id="pix-code-text" style="font-size: 0.7rem; word-break: break-all; background: #f0fdf4; padding: 5px; border-radius: 4px; margin-top: 5px;"></div>
+                    
+                    <button class="btn-outline" onclick="copiarPix()" style="margin-top: 5px; font-size: 0.8rem; border: 1px solid #ccc; padding: 5px 10px; border-radius: 8px; cursor: pointer; background: transparent;">COPIAR PIX COPIA E COLA</button>
+                    
+                    <div id="pix-manual-container" style="margin-top: 15px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 5px;">Ou use a chave manual:</p>
+                        <p id="msg-chave-manual" style="font-weight: 700; color: #1e293b; font-size: 0.95rem; margin-bottom: 5px;">PIX: (Carregando...)</p>
+                        <button class="btn-outline" onclick="copiarChaveManual()" style="font-size: 0.75rem; padding: 4px 10px; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; background: transparent;">COPIAR CHAVE</button>
+                    </div>
+
+                    <div style="background: #fff7ed; color: #c2410c; padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: 700; font-size: 0.95rem; border: 2px dashed #f97316;">
+                        ⚠️ Atenção: O pedido só será confirmado após o envio do comprovante no WhatsApp!
+                    </div>
+
+                    <button class="btn-primario" onclick="finalizarPedido(this)" style="width: 100%; margin-top: 15px; font-size: 1.1rem; padding: 15px; border-radius: 8px;">✅ Enviar Pedido e Comprovante</button>
+                </div>
+
+                <div id="box-cartao" class="hidden" style="margin-top: 15px;">
+                    <p style="font-size: 0.9rem; color: #4b5563; margin-bottom: 10px; text-align: center;">A maquininha será levada até você.</p>
+                    <button class="btn-primario" onclick="finalizarPedido(this)" style="width: 100%; font-size: 1.1rem; padding: 15px; border-radius: 8px;">✅ Enviar Pedido</button>
+                </div>
+
+                <div id="box-dinheiro" class="hidden" style="margin-top: 10px;">
+                    <input type="number" id="troco" class="form-input" placeholder="Troco para quanto? (Ex: 50)" style="margin-bottom: 15px;">
+                    <button class="btn-primario" onclick="finalizarPedido(this)" style="width: 100%; font-size: 1.1rem; padding: 15px; border-radius: 8px;">✅ Enviar Pedido</button>
+                </div>
             </div>
+
+            <button class="btn" onclick="trocarTela('cardapio')" style="width: 100%; background: #e5e7eb; color: #374151; padding: 12px; border-radius: 8px; font-weight: bold; margin-bottom: 30px;">🔙 Voltar ao Cardápio</button>
+
         </div>
-    </div> <div style="text-align: center; padding: 30px 15px 40px; margin-top: 20px; color: #9ca3af; font-size: 0.75rem; line-height: 1.6; border-top: 1px solid #e5e7eb;">
+    </div> <div id="view-sucesso" class="view-section">
+        <div style="text-align: center; padding: 50px 20px; max-width: 500px; margin: 0 auto;">
+            <div style="font-size: 5rem; margin-bottom: 20px;">✅</div>
+            <h2 style="color: #10b981; margin-bottom: 10px; font-size: 1.8rem;">Pedido Registrado!</h2>
+            <p style="color: #6b7280; margin-bottom: 30px; font-size: 1rem;">O seu pedido foi salvo. Agora é só enviar no WhatsApp para o restaurante preparar tudo pra você!</p>
+            
+            <button id="btn-reabrir-whats" class="btn-primario" style="padding: 15px; font-size: 1.2rem; width: 100%; margin-bottom: 15px; border-radius: 8px; background-color: #25D366;">
+                📲 Abrir WhatsApp Agora
+            </button>
+            
+            <button class="btn" onclick="window.location.reload()" style="width: 100%; background: #e5e7eb; color: #374151; padding: 12px; border-radius: 8px; font-weight: bold;">
+                Voltar ao Cardápio
+            </button>
+        </div>
+    </div>
+
+    <div style="text-align: center; padding: 30px 15px 40px; margin-top: 20px; color: #9ca3af; font-size: 0.75rem; line-height: 1.6; border-top: 1px solid #e5e7eb;">
         ⚡ Desenvolvido por <strong style="color: #6b7280; letter-spacing: 0.5px;">TGSolidade</strong><br>
         &copy; 2026 TGSolidade. Todos os direitos reservados.
     </div>
@@ -691,9 +716,26 @@
             atualizarResumoCheckout(); 
         };
 
-        window.selPag = (t, el) => { pagSel = t; document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('box-pix').classList.add('hidden'); document.getElementById('box-dinheiro').classList.add('hidden'); if(t==='pix') { document.getElementById('box-pix').classList.remove('hidden'); atualizarResumoCheckout(); } else if(t==='dinheiro') { document.getElementById('box-dinheiro').classList.remove('hidden'); } };
+        // --- SISTEMA DINÂMICO DE BOTÕES DE PAGAMENTO ---
+        window.selPag = (t, el) => { 
+            pagSel = t; 
+            document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); 
+            el.classList.add('selected'); 
+            
+            document.getElementById('box-pix').classList.add('hidden'); 
+            document.getElementById('box-dinheiro').classList.add('hidden'); 
+            document.getElementById('box-cartao').classList.add('hidden'); 
 
-        // --- CÁLCULO DE FUSO HORÁRIO BLINDADO NO CHECKOUT ---
+            if(t==='pix') { 
+                document.getElementById('box-pix').classList.remove('hidden'); 
+                atualizarResumoCheckout(); 
+            } else if(t==='dinheiro') { 
+                document.getElementById('box-dinheiro').classList.remove('hidden'); 
+            } else if(t==='cartao' || t==='cartao_maquina') {
+                document.getElementById('box-cartao').classList.remove('hidden');
+            }
+        };
+
         window.aplicarCupom = async () => {
             const input = document.getElementById('input-cupom');
             const codigo = input.value.trim().toUpperCase();
@@ -799,11 +841,17 @@
             }
         }
 
-        window.finalizarPedido = async () => {
+        window.finalizarPedido = async (btnElement) => {
             if(carrinho.length === 0) return;
             if(!document.getElementById('nome-cliente').value || !document.getElementById('tel-cliente').value) return mostrarNotificacao('Preencha seus dados!', 'erro');
             if(!pagSel) return mostrarNotificacao('Selecione pagamento!', 'erro');
             if(tipoEntrega === 'entrega' && !document.getElementById('endereco').value) return mostrarNotificacao('Endereço incompleto!', 'erro');
+
+            // Proteção contra duplos cliques
+            if(btnElement) {
+                btnElement.disabled = true;
+                btnElement.innerHTML = '⏳ Processando...';
+            }
 
             const totalProdutos = carrinho.reduce((a,b) => a + (b.preco * (b.qtd || b.quantidade || 1)), 0);
             let descCupom = 0;
@@ -863,13 +911,24 @@
                 let meus = JSON.parse(localStorage.getItem('meus_pedidos_ids'))||[]; meus.push(ref.id); localStorage.setItem('meus_pedidos_ids', JSON.stringify(meus));
                 localStorage.removeItem('carrinho'); carrinho = [];
                 
+                // Exibe a tela de Sucesso imediatamente
+                document.querySelectorAll('.view-section').forEach(s=>s.classList.remove('active'));
+                document.getElementById('view-sucesso').classList.add('active');
+                window.scrollTo(0,0);
+                
                 enviarWhatsApp(pedido); 
                 
-                mostrarNotificacao('Pedido enviado!', 'sucesso');
-                setTimeout(() => window.location.reload(), 2000);
-            } catch(e) { console.error(e); mostrarNotificacao('Erro ao enviar', 'erro'); }
+            } catch(e) { 
+                console.error(e); 
+                mostrarNotificacao('Erro ao enviar', 'erro'); 
+                if(btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = '✅ Enviar Pedido';
+                }
+            }
         };
 
+        // --- SISTEMA WHATSAPP ANTI-IPHONE ---
         function enviarWhatsApp(p) {
             let msg = `*NOVO PEDIDO ${p.idDisplay}*\n`;
             msg += `👤 ${p.cliente.nome}\n`;
@@ -904,7 +963,17 @@
 
             const tel = configLoja.whatsapp ? configLoja.whatsapp.replace(/\D/g, '') : '';
             if(tel) {
-                window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+                const urlWhatsApp = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+                
+                // Acopla o link no botão da tela de sucesso (Plano B)
+                document.getElementById('btn-reabrir-whats').onclick = () => {
+                    window.location.href = urlWhatsApp;
+                };
+
+                // Redireciona via href para furar o bloqueio do iPhone (Plano A)
+                setTimeout(() => {
+                    window.location.href = urlWhatsApp;
+                }, 600);
             }
         }
 
