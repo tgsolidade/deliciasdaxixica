@@ -260,7 +260,7 @@
         </div>
     </div> <div style="text-align: center; padding: 30px 15px 40px; margin-top: 20px; color: #9ca3af; font-size: 0.75rem; line-height: 1.6; border-top: 1px solid #e5e7eb;">
         ⚡ Desenvolvido por <strong style="color: #6b7280; letter-spacing: 0.5px;">TGSolidade</strong><br>
-        &copy; Copyright 2026 TGSolidade. Todos os direitos reservados.
+        &copy; 2026 TGSolidade. Todos os direitos reservados.
     </div>
 
     <div id="btn-carrinho" class="btn-flutuante hidden" onclick="abrirModalCarrinho()">
@@ -693,6 +693,7 @@
 
         window.selPag = (t, el) => { pagSel = t; document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); document.getElementById('box-pix').classList.add('hidden'); document.getElementById('box-dinheiro').classList.add('hidden'); if(t==='pix') { document.getElementById('box-pix').classList.remove('hidden'); atualizarResumoCheckout(); } else if(t==='dinheiro') { document.getElementById('box-dinheiro').classList.remove('hidden'); } };
 
+        // --- CÁLCULO DE FUSO HORÁRIO BLINDADO NO CHECKOUT ---
         window.aplicarCupom = async () => {
             const input = document.getElementById('input-cupom');
             const codigo = input.value.trim().toUpperCase();
@@ -711,9 +712,14 @@
                 } else {
                     const docCupom = snap.docs[0];
                     const dados = docCupom.data();
-                    const hoje = new Date().toISOString().split('T')[0];
+                    
+                    const dataAtual = new Date();
+                    const hojeLocal = dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1).padStart(2, '0') + '-' + String(dataAtual.getDate()).padStart(2, '0');
+                    
+                    const dataValidade = new Date(dados.validade + "T00:00:00").getTime();
+                    const dataHoje = new Date(hojeLocal + "T00:00:00").getTime();
 
-                    if (dados.validade < hoje) {
+                    if (dataValidade < dataHoje) {
                         msg.textContent = 'Este cupom venceu.'; msg.className = 'cupom-msg erro';
                         cupomAplicado = null;
                     } else if (dados.usos >= dados.limite) {
@@ -991,9 +997,6 @@
 
         window.copiarPix = () => { navigator.clipboard.writeText(pixPayload); mostrarNotificacao('Código copiado!', 'sucesso'); };
 
-        // =====================================================
-        // FUNÇÃO PIX CORRIGIDA E BLINDADA
-        // =====================================================
         function gerarPayloadPix(chavePix, nome, cidade, valorFormatado) {
             let chave = (chavePix || '').trim();
             chave = chave.replace(/\s+/g, '');
