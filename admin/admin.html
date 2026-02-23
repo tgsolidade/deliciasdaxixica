@@ -507,15 +507,12 @@
             document.getElementById('sidebar').classList.remove('open');
         };
 
-        // --- DASHBOARD ATUALIZADO COM FILTRO DE DATAS ---
         let dashSnapshot = null;
         function initDashboard() {
             const inputDataDashboard = document.getElementById('filtro-data-dashboard');
-            // Define o valor padrão do input de data para HOJE
             if (!inputDataDashboard.value) {
                 inputDataDashboard.value = new Date().toISOString().split('T')[0];
             }
-            // Quando a data mudar, recalcula o painel
             inputDataDashboard.addEventListener('change', atualizarCardsDashboard);
 
             getDocs(collection(db, COLLECTIONS.CONFIGURACOES)).then(snap => {
@@ -545,7 +542,7 @@
                 const [ano, mes, dia] = dataSelecionadaStr.split('-');
                 dataRefStr = new Date(ano, mes - 1, dia).toDateString();
             } else {
-                dataRefStr = new Date().toDateString(); // Segurança: fallback pra hoje
+                dataRefStr = new Date().toDateString(); 
             }
 
             let fat = 0, qtd = 0, lista = [];
@@ -629,7 +626,6 @@
             });
         }
 
-        // --- PEDIDOS ATUALIZADO COM FILTRO DE DATAS E HORA NO CARD ---
         let todosPedidos = [], mostrarEntregues = false, filtro = 'todos';
         let primeiraCargaPedidos = true; 
 
@@ -672,7 +668,6 @@
         window.renderPedidos = () => {
             const lista = document.getElementById('lista-pedidos'); lista.innerHTML = '';
             
-            // Lógica do filtro de data
             const dataSelecionada = document.getElementById('filtro-data-pedidos').value;
             let dataRefStr = null;
             if(dataSelecionada) {
@@ -717,7 +712,6 @@
                 card.className = `pedido-card ${p.status}`;
                 card.id = `card-${p.uid}`; 
                 
-                // Formatação da Data e Hora para o Card
                 const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : new Date();
                 const dataFormatada = dCria.toLocaleDateString('pt-BR') + ' às ' + dCria.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 
@@ -788,7 +782,6 @@
         window.updSt = async (uid, st) => { await updateDoc(doc(db, COLLECTIONS.PEDIDOS, uid), {status:st, dataEntregaRealizada: st==='entregue'?new Date():null}); window.mostrarNotificacao('Atualizado','sucesso'); };
         window.delPed = async (uid) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PEDIDOS, uid)); };
 
-        // --- PRODUTOS ---
         let produtosLista = [], cats = [], idEdit = null;
 
         function converterUrlImagem(url) {
@@ -914,7 +907,7 @@
         };
         window.delProd = async (id) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PRODUTOS, id)); };
 
-        // --- CUPONS ---
+        // --- CUPONS COM FIX DE DATA LOCAL ---
         function initCupons() {
             onSnapshot(collection(db, 'cupons'), (snap) => {
                 const tbody = document.getElementById('lista-cupons');
@@ -923,8 +916,15 @@
                 
                 snap.forEach(d => {
                     const c = { id: d.id, ...d.data() };
-                    const hoje = new Date().toISOString().split('T')[0];
-                    const expirado = c.validade < hoje;
+                    
+                    // Cálculo blindado da data local
+                    const dataAtual = new Date();
+                    const hojeLocal = dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1).padStart(2, '0') + '-' + String(dataAtual.getDate()).padStart(2, '0');
+                    
+                    const dataValidade = new Date(c.validade + "T00:00:00").getTime();
+                    const dataHoje = new Date(hojeLocal + "T00:00:00").getTime();
+                    
+                    const expirado = dataValidade < dataHoje;
                     const esgotado = c.usos >= c.limite;
                     
                     let statusClass = 'status-ativo';
@@ -941,7 +941,7 @@
                         <tr>
                             <td style="font-weight:700;">${c.codigo}</td>
                             <td>${formatarPreco(c.valor)}</td>
-                            <td>${new Date(c.validade).toLocaleDateString()}</td>
+                            <td>${new Date(c.validade + "T00:00:00").toLocaleDateString('pt-BR')}</td>
                             <td>${c.usos} / ${c.limite}</td>
                             <td><span style="font-size:0.85rem; color:#4b5563;">${infoTipo}</span></td>
                             <td><span class="${statusClass}">${statusText}</span></td>
