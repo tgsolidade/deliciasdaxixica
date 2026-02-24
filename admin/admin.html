@@ -418,7 +418,7 @@
     <div id="toast-container"></div>
 
     <script type="module">
-        import { db, auth, collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, COLLECTIONS } from '../assets/js/firebase-config.js';
+        import { db, auth, collection, getDocs, doc, getDoc, updateDoc, setDoc, addDoc, deleteDoc, onSnapshot, query, orderBy, formatarPreco, COLLECTIONS } from '../assets/js/firebase-config.js';
         import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
         document.getElementById('toggle-senha').addEventListener('click', function() {
@@ -780,7 +780,54 @@
             });
         }
         window.updSt = async (uid, st) => { await updateDoc(doc(db, COLLECTIONS.PEDIDOS, uid), {status:st, dataEntregaRealizada: st==='entregue'?new Date():null}); window.mostrarNotificacao('Atualizado','sucesso'); };
-        window.delPed = async (uid) => { if(confirm('Excluir?')) await deleteDoc(doc(db, COLLECTIONS.PEDIDOS, uid)); };
+        
+        // --- NOVA LÓGICA DE EXCLUSÃO DE PEDIDO COM RETORNO DE ESTOQUE ---
+        window.delPed = async (uid) => { 
+            if(confirm('Tem certeza que deseja excluir este pedido? Se houver produtos controlados por estoque, as quantidades serão devolvidas.')) {
+                try {
+                    // 1. Pega os dados do pedido antes de deletar
+                    const pedidoDoc = await getDoc(doc(db, COLLECTIONS.PEDIDOS, uid));
+                    
+                    if (pedidoDoc.exists()) {
+                        const pedidoData = pedidoDoc.data();
+                        
+                        // 2. Verifica se tem itens no pedido
+                        if (pedidoData.itens && Array.isArray(pedidoData.itens)) {
+                            // 3. Itera sobre cada item do pedido
+                            for (const item of pedidoData.itens) {
+                                // A quantidade pode vir como 'qtd' ou 'quantidade'
+                                const quantidadeDevolver = item.qtd || item.quantidade || 1;
+                                
+                                // 4. Pega o documento atual do produto no banco para ver o estoque
+                                const produtoRef = doc(db, COLLECTIONS.PRODUTOS, item.id);
+                                const produtoDoc = await getDoc(produtoRef);
+                                
+                                if (produtoDoc.exists()) {
+                                    const produtoData = produtoDoc.data();
+                                    
+                                    // 5. Se o produto tem controle de estoque (não é null/undefined)
+                                    if (produtoData.estoque !== null && produtoData.estoque !== undefined) {
+                                        const novoEstoque = produtoData.estoque + quantidadeDevolver;
+                                        
+                                        // 6. Atualiza o estoque do produto
+                                        await updateDoc(produtoRef, { estoque: novoEstoque });
+                                        console.log(`Devolvido ${quantidadeDevolver} unid de ${item.nome} ao estoque.`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 7. Por fim, deleta o pedido
+                    await deleteDoc(doc(db, COLLECTIONS.PEDIDOS, uid)); 
+                    window.mostrarNotificacao('Pedido excluído com sucesso.', 'sucesso');
+                    
+                } catch (error) {
+                    console.error("Erro ao excluir pedido e retornar estoque:", error);
+                    window.mostrarNotificacao('Erro ao excluir pedido.', 'erro');
+                }
+            }
+        };
 
         let produtosLista = [], cats = [], idEdit = null;
 
