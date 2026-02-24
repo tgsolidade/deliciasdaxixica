@@ -163,7 +163,7 @@
         <button class="toggle-sidebar" id="toggle-sidebar">☰</button>
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-                <img id="admin-logo-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: contain; display: none;" onerror="this.style.display='none'; document.getElementById('admin-logo-text').style.display='block';">
+                <img id="admin-logo-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: none;" onerror="this.style.display='none'; document.getElementById('admin-logo-text').style.display='block';">
                 <div id="admin-logo-text" style="font-size: 3rem;">⟳</div>
                 <h2 id="nome-loja-sidebar">Carregando...</h2>
             </div>
@@ -511,7 +511,6 @@
 
         let dashSnapshot = null;
         
-        // --- NOVA FUNÇÃO INIT DASHBOARD (COM DUAS DATAS) ---
         function initDashboard() {
             const inputDataInicial = document.getElementById('filtro-data-inicial');
             const inputDataFinal = document.getElementById('filtro-data-final');
@@ -542,7 +541,6 @@
             });
         }
 
-        // --- NOVA LÓGICA DE ATUALIZAÇÃO DO DASHBOARD (FILTRO POR PERÍODO) ---
         function atualizarCardsDashboard() {
             if(!dashSnapshot) return;
             
@@ -581,8 +579,8 @@
             lista.sort((a, b) => b.criadoEm - a.criadoEm);
             let html = '';
             
-            // Mostra os 10 últimos daquele período na tabela
-            lista.slice(0, 10).forEach(p => {
+            // Mostra TODOS os pedidos do período selecionado na tabela (removemos o .slice)
+            lista.forEach(p => {
                 const stColor = p.status === 'entregue' ? '#10b981' : '#f59e0b';
                 const dataFormatada = p.criadoEm.toDate().toLocaleDateString('pt-BR') + ' ' + p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
                 html += `<tr style="border-bottom: 1px solid #f3f4f6;">
