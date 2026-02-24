@@ -104,6 +104,21 @@
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; }
         .toast { background: #333; color: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px; animation: fadeIn 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
         .toast.sucesso { background: #10b981; } .toast.erro { background: #ef4444; }
+
+        /* Estilos Grupos Opções Modal */
+        .grupo-opcoes { margin-bottom: 15px; background: #fff; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .grupo-header { background: #f9fafb; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .grupo-titulo { font-weight: 700; font-size: 0.95rem; color: #1f2937; margin: 0; }
+        .grupo-regra { font-size: 0.75rem; color: #6b7280; background: #e5e7eb; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        .grupo-itens { padding: 10px 15px; display: flex; flex-direction: column; gap: 10px; }
+        .opcao-item { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .opcao-info { display: flex; align-items: center; gap: 10px; }
+        .opcao-foto { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; background: #f3f4f6; }
+        .opcao-nome { font-size: 0.9rem; color: #374151; font-weight: 500; }
+        .opcao-preco { font-size: 0.85rem; color: #10b981; font-weight: 600; }
+        
+        .radio-custom, .checkbox-custom { width: 20px; height: 20px; margin: 0; cursor: pointer; accent-color: var(--cor-primaria); }
+        .btn-add:disabled { background: #9ca3af; cursor: not-allowed; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -298,8 +313,7 @@
     </a>
 
     <div class="modal-overlay" id="modal-produto" onclick="if(event.target===this) fecharModal('modal-produto')">
-        <div class="modal">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+        <div class="modal" style="padding-bottom: 100px; position: relative;"> <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                 <h2 id="md-titulo" style="font-size:1.3rem; line-height:1.2;">...</h2>
                 <button onclick="fecharModal('modal-produto')" style="background:none; border:none; font-size:1.5rem;">×</button>
             </div>
@@ -314,6 +328,8 @@
                 <strong style="display:block; font-size:0.8rem; color:#4b5563; margin-bottom:4px;">Ingredientes / Detalhes:</strong>
                 <p id="md-detalhes" style="color:#374151; font-size:0.85rem; margin:0; line-height:1.4;"></p>
             </div>
+
+            <div id="md-grupos-opcoes"></div>
 
             <div id="md-encomenda-opt" class="hidden" style="background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:15px;">
                 <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#1e40af;">
@@ -335,13 +351,13 @@
 
             <textarea id="md-obs" class="form-textarea" placeholder="Observações? (Ex: Sem cebola, ponto da carne...)" rows="2" style="margin-bottom:15px;"></textarea>
             
-            <div style="display:flex; gap:15px; align-items:center;">
-                <div style="display:flex; align-items:center; border:1px solid #ddd; border-radius:8px;">
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #e5e7eb; border-radius: 0 0 20px 20px; display:flex; gap:15px; align-items:center;">
+                <div style="display:flex; align-items:center; border:1px solid #ddd; border-radius:8px; background: #f9fafb;">
                     <button onclick="mudarQtd(-1)" style="padding:10px 15px; background:none; border:none; font-size:1.2rem;">-</button>
                     <span id="md-qtd" style="font-weight:700; width:30px; text-align:center;">1</span>
                     <button onclick="mudarQtd(1)" style="padding:10px 15px; background:none; border:none; font-size:1.2rem;">+</button>
                 </div>
-                <button class="btn-primario" onclick="addCarrinho()" style="flex:1; display:flex; justify-content:space-between; padding:12px 20px;">
+                <button class="btn-primario btn-add" id="btn-add-produto" onclick="addCarrinho()" style="flex:1; display:flex; justify-content:space-between; padding:15px 20px; border-radius: 8px; width: auto; height: auto;">
                     <span>Adicionar</span><span id="md-preco">R$ 0,00</span>
                 </button>
             </div>
@@ -380,6 +396,8 @@
         let prodSel = null, qtdSel = 1, tipoEntrega = 'entrega', pagSel = '';
         let rastreioListeners = [];
         let cupomAplicado = null; 
+        
+        let extraTotalGrupos = 0; // Guarda a soma dos adicionais
 
         document.addEventListener('DOMContentLoaded', () => {
             initListeners();
@@ -535,7 +553,7 @@
             const pode = configLoja.lojaAberta || p.sobEncomenda;
             if(!pode) return mostrarNotificacao('Loja fechada no momento.', 'erro');
             
-            prodSel = p; qtdSel = 1;
+            prodSel = p; qtdSel = 1; extraTotalGrupos = 0;
             
             document.getElementById('md-titulo').textContent = p.nome;
             document.getElementById('md-desc').textContent = p.descricao || '';
@@ -594,9 +612,127 @@
             
             if(p.sobEncomenda) { document.getElementById('md-encomenda-opt').classList.remove('hidden'); document.getElementById('md-check-enc').checked = false; document.getElementById('md-agendamento').classList.add('hidden'); } else { document.getElementById('md-encomenda-opt').classList.add('hidden'); }
             
+            renderizarGruposOpcoes(p.gruposOpcoes);
+            
             atualizarPrecoModal(); 
+            validarObrigatorios(); // Checa se pode liberar o botão ao abrir
+            
             document.getElementById('modal-produto').classList.add('active');
         };
+
+        // --- LÓGICA GRUPOS DE OPÇÕES NO CARDÁPIO ---
+        function renderizarGruposOpcoes(grupos) {
+            const container = document.getElementById('md-grupos-opcoes');
+            container.innerHTML = '';
+
+            if (!grupos || grupos.length === 0) return;
+
+            grupos.forEach((g) => {
+                const isRadio = g.max === 1;
+                const reqTexto = g.min > 0 ? `ESCOLHA ${g.min === g.max ? g.min : `DE ${g.min} ATÉ ${g.max}`}` : `ESCOLHA ATÉ ${g.max}`;
+                const reqBadge = g.min > 0 ? `<span class="grupo-regra" style="background:#fef2f2; color:#ef4444;">OBRIGATÓRIO</span>` : `<span class="grupo-regra">OPCIONAL</span>`;
+
+                let itensHtml = '';
+                g.itens.forEach((item) => {
+                    const inputType = isRadio ? 'radio' : 'checkbox';
+                    const inputName = `grupo_${g.id}`;
+                    const inputClass = isRadio ? 'radio-custom' : 'checkbox-custom';
+                    
+                    const imgHtml = item.foto ? `<img src="${item.foto}" class="opcao-foto" onerror="this.style.display='none'">` : '';
+                    const precoHtml = item.preco > 0 ? `<span class="opcao-preco">+ ${formatarPreco(item.preco)}</span>` : '';
+
+                    itensHtml += `
+                        <label class="opcao-item">
+                            <div class="opcao-info">
+                                ${imgHtml}
+                                <div>
+                                    <div class="opcao-nome">${item.nome}</div>
+                                    ${precoHtml}
+                                </div>
+                            </div>
+                            <input type="${inputType}" name="${inputName}" value="${item.id}" class="${inputClass} opt-input" data-grupo-id="${g.id}" data-preco="${item.preco}" onchange="calcularAdicionais()">
+                        </label>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="grupo-opcoes" data-grupo-id="${g.id}" data-min="${g.min}" data-max="${g.max}" data-gratis="${g.qtdGratis}">
+                        <div class="grupo-header">
+                            <div>
+                                <h3 class="grupo-titulo">${g.nome}</h3>
+                                <span style="font-size:0.75rem; color:#6b7280;">${reqTexto}</span>
+                            </div>
+                            ${reqBadge}
+                        </div>
+                        <div class="grupo-itens">
+                            ${itensHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.calcularAdicionais = () => {
+            if (!prodSel || !prodSel.gruposOpcoes) return;
+            
+            extraTotalGrupos = 0;
+
+            // Percorre cada grupo renderizado para calcular os limites e preços
+            document.querySelectorAll('.grupo-opcoes').forEach(grupoDiv => {
+                const max = parseInt(grupoDiv.getAttribute('data-max'));
+                const qtdGratis = parseInt(grupoDiv.getAttribute('data-gratis'));
+                
+                const inputsChecks = Array.from(grupoDiv.querySelectorAll('.opt-input:checked'));
+                const allInputs = Array.from(grupoDiv.querySelectorAll('.opt-input'));
+
+                // Trava visual de limite máximo (desabilita os outros checkboxes se atingir o max)
+                if (max > 1) {
+                    if (inputsChecks.length >= max) {
+                        allInputs.forEach(inp => { if (!inp.checked) inp.disabled = true; });
+                    } else {
+                        allInputs.forEach(inp => inp.disabled = false);
+                    }
+                }
+
+                // Cálculo de preço aplicando regra de gratuidade
+                let precosSelecionados = inputsChecks.map(inp => parseFloat(inp.getAttribute('data-preco')) || 0);
+                
+                // Ordena do menor pro maior para que os itens mais baratos sejam os gratuitos
+                precosSelecionados.sort((a, b) => a - b);
+                
+                let cobrados = precosSelecionados;
+                if (qtdGratis > 0 && precosSelecionados.length > 0) {
+                    // Remove os N primeiros itens da lista (que são os mais baratos por conta do sort)
+                    cobrados = precosSelecionados.slice(qtdGratis);
+                }
+
+                // Soma o que restou para ser cobrado
+                cobrados.forEach(p => extraTotalGrupos += p);
+            });
+
+            atualizarPrecoModal();
+            validarObrigatorios();
+        };
+
+        function validarObrigatorios() {
+            const btnAdd = document.getElementById('btn-add-produto');
+            let tudoCerto = true;
+
+            document.querySelectorAll('.grupo-opcoes').forEach(grupoDiv => {
+                const min = parseInt(grupoDiv.getAttribute('data-min'));
+                const marcados = grupoDiv.querySelectorAll('.opt-input:checked').length;
+                if (marcados < min) tudoCerto = false;
+            });
+
+            btnAdd.disabled = !tudoCerto;
+            if(!tudoCerto) {
+                btnAdd.innerHTML = '<span>Selecione os obrigatórios</span>';
+                btnAdd.style.background = '#9ca3af';
+            } else {
+                btnAdd.style.background = 'var(--cor-primaria)';
+                atualizarPrecoModal(); // Volta o texto normal
+            }
+        }
 
         window.mudarQtd = (v) => { 
             let novaQtd = qtdSel + v;
@@ -613,18 +749,26 @@
         };
 
         function atualizarPrecoModal() {
-            const preco = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
-            document.getElementById('md-preco').textContent = formatarPreco(preco * qtdSel);
+            const btnAdd = document.getElementById('btn-add-produto');
+            if(btnAdd.disabled) return; // Se tiver desabilitado pela trava, não mexe no texto
+
+            const precoBase = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
+            const precoUnitarioFinal = precoBase + extraTotalGrupos;
+            
+            document.getElementById('md-preco').textContent = formatarPreco(precoUnitarioFinal * qtdSel);
+            btnAdd.innerHTML = `<span>Adicionar</span><span id="md-preco">${formatarPreco(precoUnitarioFinal * qtdSel)}</span>`;
         }
-        window.toggleAgendamento = (chk) => { if(chk.checked) { document.getElementById('md-agendamento').classList.remove('hidden'); const d = new Date(); d.setDate(d.getDate()+1); document.getElementById('md-data').min = d.toISOString().split('T')[0]; } else { document.getElementById('md-agendamento').classList.add('hidden'); } }
 
         window.addCarrinho = () => {
             const isAgendado = document.getElementById('md-check-enc').checked;
             let agendamento = null;
             if(isAgendado) { const data = document.getElementById('md-data').value; const hora = document.getElementById('md-hora').value; if(!data || !hora) return mostrarNotificacao('Informe data e hora!', 'erro'); agendamento = { data, hora }; }
             
-            const precoNormal = prodSel.preco;
-            const precoFinal = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
+            const precoBaseNormal = prodSel.preco;
+            const precoBaseDesconto = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
+
+            const precoUnitarioFinalNormal = precoBaseNormal + extraTotalGrupos;
+            const precoUnitarioFinalComDesconto = precoBaseDesconto + extraTotalGrupos;
 
             let obsFinal = document.getElementById('md-obs').value.trim();
             if (prodSel.bloquearObs && prodSel.itensRemoviveis && prodSel.itensRemoviveis.length > 0) {
@@ -634,15 +778,36 @@
                 }
             }
 
+            // Coletar as opções marcadas para salvar no carrinho
+            let opcoesSelecionadas = [];
+            document.querySelectorAll('.grupo-opcoes').forEach(grupoDiv => {
+                const inputsChecks = Array.from(grupoDiv.querySelectorAll('.opt-input:checked'));
+                const grupoId = grupoDiv.getAttribute('data-grupo-id');
+                const grupoData = prodSel.gruposOpcoes.find(g => g.id === grupoId);
+                
+                inputsChecks.forEach(inp => {
+                    const itemId = inp.value;
+                    const itemData = grupoData.itens.find(i => i.id === itemId);
+                    if (itemData) {
+                        opcoesSelecionadas.push({
+                            grupoNome: grupoData.nome,
+                            nome: itemData.nome,
+                            preco: itemData.preco
+                        });
+                    }
+                });
+            });
+
             carrinho.push({ 
                 id: prodSel.id, 
                 nome: prodSel.nome, 
-                preco: precoFinal, 
-                precoNormal: precoNormal, 
+                preco: precoUnitarioFinalComDesconto, 
+                precoNormal: precoUnitarioFinalNormal, 
                 qtd: qtdSel, 
                 obs: obsFinal, 
                 sobEncomenda: prodSel.sobEncomenda || false, 
-                agendamento: agendamento 
+                agendamento: agendamento,
+                opcoesSelecionadas: opcoesSelecionadas // SALVANDO OS ADICIONAIS AQUI
             });
             salvarCarrinho(); fecharModal('modal-produto'); mostrarNotificacao('Adicionado!', 'sucesso');
         };
@@ -674,7 +839,16 @@
                     carrinho.forEach((item, idx) => {
                         let enc = item.sobEncomenda ? '<small style="color:#2563eb;">(Enc)</small>' : '';
                         const q = item.qtd || item.quantidade || 1;
-                        dskList.innerHTML += `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f3f4f6;"><div style="flex:1"><div style="font-weight:600;color:#374151;">${q}x ${item.nome} ${enc}</div><div style="font-size:0.85rem;color:#6b7280;">${formatarPreco(item.preco * q)}</div></div><button onclick="window.removeItem(${idx})" style="color:#ef4444;border:none;background:none;cursor:pointer;">×</button></div>`;
+                        
+                        // Renderiza os adicionais no carrinho lateral
+                        let adicionaisHtml = '';
+                        if (item.opcoesSelecionadas && item.opcoesSelecionadas.length > 0) {
+                            adicionaisHtml = `<div style="font-size:0.75rem; color:#6b7280; margin-top:2px;">` + 
+                                item.opcoesSelecionadas.map(op => `+ ${op.nome}`).join('<br>') + 
+                            `</div>`;
+                        }
+
+                        dskList.innerHTML += `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f3f4f6;"><div style="flex:1"><div style="font-weight:600;color:#374151;">${q}x ${item.nome} ${enc}</div>${adicionaisHtml}<div style="font-size:0.85rem;color:#6b7280;margin-top:4px;">${formatarPreco(item.preco * q)}</div></div><button onclick="window.removeItem(${idx})" style="color:#ef4444;border:none;background:none;cursor:pointer;">×</button></div>`;
                     });
                 }
             }
@@ -684,7 +858,15 @@
             if(carrinho.length === 0) mobList.innerHTML = '<p style="text-align:center;color:#999;">Vazio.</p>';
             carrinho.forEach((item, idx) => { 
                 const q = item.qtd || item.quantidade || 1;
-                mobList.innerHTML += `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;"><div><strong>${q}x ${item.nome}</strong><br>${formatarPreco(item.preco * q)}</div><button onclick="window.removeItem(${idx})" style="color:red;border:none;background:none;">🗑️</button></div>`; 
+                
+                let adicionaisHtml = '';
+                if (item.opcoesSelecionadas && item.opcoesSelecionadas.length > 0) {
+                    adicionaisHtml = `<div style="font-size:0.8rem; color:#666; margin-top:2px;">` + 
+                        item.opcoesSelecionadas.map(op => `+ ${op.nome}`).join('<br>') + 
+                    `</div>`;
+                }
+
+                mobList.innerHTML += `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;"><div><strong>${q}x ${item.nome}</strong>${adicionaisHtml}<br>${formatarPreco(item.preco * q)}</div><button onclick="window.removeItem(${idx})" style="color:red;border:none;background:none;">🗑️</button></div>`; 
             });
         }
         window.removeItem = (idx) => { carrinho.splice(idx, 1); salvarCarrinho(); };
@@ -847,7 +1029,6 @@
             if(!pagSel) return mostrarNotificacao('Selecione pagamento!', 'erro');
             if(tipoEntrega === 'entrega' && !document.getElementById('endereco').value) return mostrarNotificacao('Endereço incompleto!', 'erro');
 
-            // Proteção contra duplos cliques
             if(btnElement) {
                 btnElement.disabled = true;
                 btnElement.innerHTML = '⏳ Processando...';
@@ -911,7 +1092,6 @@
                 let meus = JSON.parse(localStorage.getItem('meus_pedidos_ids'))||[]; meus.push(ref.id); localStorage.setItem('meus_pedidos_ids', JSON.stringify(meus));
                 localStorage.removeItem('carrinho'); carrinho = [];
                 
-                // Exibe a tela de Sucesso imediatamente
                 document.querySelectorAll('.view-section').forEach(s=>s.classList.remove('active'));
                 document.getElementById('view-sucesso').classList.add('active');
                 window.scrollTo(0,0);
@@ -928,7 +1108,6 @@
             }
         };
 
-        // --- SISTEMA WHATSAPP ANTI-IPHONE ---
         function enviarWhatsApp(p) {
             let msg = `*NOVO PEDIDO ${p.idDisplay}*\n`;
             msg += `👤 ${p.cliente.nome}\n`;
@@ -939,6 +1118,15 @@
                 msg += `▪️ ${q}x ${i.nome}`;
                 if(i.sobEncomenda) msg += ` (Enc)`;
                 msg += `\n`;
+                
+                // ADD OS GRUPOS DE OPÇÕES NO TEXTO DO ZAP
+                if (i.opcoesSelecionadas && i.opcoesSelecionadas.length > 0) {
+                    i.opcoesSelecionadas.forEach(op => {
+                        const precoStr = op.preco > 0 ? ` (+${formatarPreco(op.preco)})` : '';
+                        msg += `   + ${op.nome}${precoStr}\n`;
+                    });
+                }
+
                 if(i.obs) msg += `   _Obs: ${i.obs}_\n`;
                 if(i.agendamento) msg += `   📅 *Agendado:* ${new Date(i.agendamento.data+'T00:00:00').toLocaleDateString()} às ${i.agendamento.hora}\n`;
             });
@@ -965,12 +1153,10 @@
             if(tel) {
                 const urlWhatsApp = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
                 
-                // Acopla o link no botão da tela de sucesso (Plano B)
                 document.getElementById('btn-reabrir-whats').onclick = () => {
                     window.location.href = urlWhatsApp;
                 };
 
-                // Redireciona via href para furar o bloqueio do iPhone (Plano A)
                 setTimeout(() => {
                     window.location.href = urlWhatsApp;
                 }, 600);
