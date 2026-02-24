@@ -375,15 +375,16 @@
                 </div>
 
                 <div id="box-grupos-opcoes" style="margin-top: 30px; border-top: 2px dashed #d1d5db; padding-top: 20px;">
-                    <h3 style="margin-bottom: 10px; color: #1f2937;">🛠️ Grupos de Opções (Complementos, Tamanhos)</h3>
-                    <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Adicione regras de tamanho, bordas ou adicionais para este produto.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="color: #1f2937; margin: 0;">🛠️ Grupos de Opções (Complementos)</h3>
+                    </div>
                     
                     <div id="lista-grupos"></div>
                     
-                    <button type="button" class="btn btn-outline" onclick="window.addGrupoOpcao()" style="margin-top: 10px;">➕ Novo Grupo de Opções</button>
+                    <button type="button" class="btn btn-outline" onclick="window.addGrupoOpcao()" style="margin-top: 10px; width: 100%; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 15px; color: #1e293b; font-weight: 700;">+ Adicionar Grupo de Opções</button>
                 </div>
                 
-                <button type="submit" class="btn btn-primario" style="margin-top: 30px;">Salvar Produto Completo</button>
+                <button type="submit" class="btn btn-primario" style="margin-top: 30px; font-size: 1.1rem; padding: 15px;">Salvar Produto Completo</button>
             </form>
         </div>
     </div>
@@ -741,7 +742,6 @@
                 const itens = p.itens?.map(i => {
                     const quantidade = i.qtd || i.quantidade || 1;
                     
-                    // NOVA PARTE PARA MOSTRAR OS COMPLEMENTOS NO PEDIDO DO ADMIN
                     let complementosHtml = '';
                     if (i.opcoesSelecionadas && Array.isArray(i.opcoesSelecionadas) && i.opcoesSelecionadas.length > 0) {
                         complementosHtml = i.opcoesSelecionadas.map(op => {
@@ -854,7 +854,7 @@
 
         // --- SISTEMA DE GRUPOS DE OPÇÕES ---
         let produtosLista = [], cats = [], idEdit = null;
-        let gruposOpcoesList = []; // Guarda os grupos em memória durante a edição do produto
+        let gruposOpcoesList = []; 
 
         window.addGrupoOpcao = () => {
             gruposOpcoesList.push({ id: Date.now().toString(), nome: '', min: 0, max: 1, qtdGratis: 0, itens: [] });
@@ -904,30 +904,45 @@
                 let itensHtml = '';
                 g.itens.forEach((item) => {
                     itensHtml += `
-                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; flex-wrap: wrap;">
-                            <input type="text" class="form-input" placeholder="Nome (Ex: Bacon)" value="${item.nome}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'nome', this.value)" style="flex: 2; min-width: 150px;">
-                            <input type="number" class="form-input" placeholder="Preço Extra" step="0.01" value="${item.preco}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'preco', parseFloat(this.value)||0)" style="flex: 1; min-width: 100px;">
-                            <input type="url" class="form-input" placeholder="URL Foto (Opcional)" value="${item.foto}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'foto', this.value)" style="flex: 2; min-width: 150px;">
-                            <button type="button" class="btn-excluir" onclick="window.removeItemGrupo('${g.id}', '${item.id}')" style="opacity: 1; color: #ef4444; width: 40px;">🗑️</button>
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fff; margin-bottom: 10px;">
+                            <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px;">
+                                <input type="text" class="form-input" placeholder="Nome" value="${item.nome}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'nome', this.value)" style="flex: 2;">
+                                <input type="number" class="form-input" placeholder="Preço" step="0.01" value="${item.preco}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'preco', parseFloat(this.value)||0)" style="flex: 1; min-width: 80px;">
+                                <button type="button" onclick="window.removeItemGrupo('${g.id}', '${item.id}')" style="background: #fee2e2; color: #ef4444; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; font-size: 1.1rem;" title="Remover Opção">🗑️</button>
+                            </div>
+                            <input type="url" class="form-input" placeholder="URL da Foto (Opcional)" value="${item.foto}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'foto', this.value)" style="width: 100%;">
                         </div>
                     `;
                 });
 
                 container.innerHTML += `
-                    <div style="background: #f9fafb; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                            <input type="text" class="form-input" placeholder="Nome do Grupo (Ex: Escolha a Borda)" value="${g.nome}" onchange="window.updateGrupo('${g.id}', 'nome', this.value)" style="font-weight: bold; width: 100%; max-width: 400px;" required>
-                            <button type="button" class="btn-outline" onclick="window.removeGrupo('${g.id}')" style="color: #ef4444; border-color: #ef4444; width: auto; padding: 5px 10px; font-size: 0.85rem;">Remover Grupo</button>
+                    <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #d1d5db; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                            <label style="font-weight: 700; color: #1f2937; font-size: 0.95rem;">Nome do Grupo</label>
+                            <button type="button" onclick="window.removeGrupo('${g.id}')" style="background: #fee2e2; color: #ef4444; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">Remover ✕</button>
                         </div>
-                        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
-                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Mínimo (0=Opcional)</label><input type="number" class="form-input" value="${g.min}" min="0" onchange="window.updateGrupo('${g.id}', 'min', parseInt(this.value)||0)"></div>
-                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Máximo de Escolhas</label><input type="number" class="form-input" value="${g.max}" min="1" onchange="window.updateGrupo('${g.id}', 'max', parseInt(this.value)||1)"></div>
-                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Qtd Grátis</label><input type="number" class="form-input" value="${g.qtdGratis}" min="0" onchange="window.updateGrupo('${g.id}', 'qtdGratis', parseInt(this.value)||0)"></div>
+                        <input type="text" class="form-input" placeholder="Ex: Escolha o Tamanho" value="${g.nome}" onchange="window.updateGrupo('${g.id}', 'nome', this.value)" style="margin-bottom: 15px;" required>
+
+                        <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 80px;">
+                                <label style="font-size: 0.8rem; font-weight:700; color:#4b5563; display:block; margin-bottom:4px;">Mín. Escolhas</label>
+                                <input type="number" class="form-input" value="${g.min}" min="0" onchange="window.updateGrupo('${g.id}', 'min', parseInt(this.value)||0)">
+                            </div>
+                            <div style="flex: 1; min-width: 80px;">
+                                <label style="font-size: 0.8rem; font-weight:700; color:#4b5563; display:block; margin-bottom:4px;">Máx. Escolhas</label>
+                                <input type="number" class="form-input" value="${g.max}" min="1" onchange="window.updateGrupo('${g.id}', 'max', parseInt(this.value)||1)">
+                            </div>
+                            <div style="flex: 1; min-width: 80px;">
+                                <label style="font-size: 0.8rem; font-weight:700; color:#10b981; display:block; margin-bottom:4px;">Qtd Grátis</label>
+                                <input type="number" class="form-input" value="${g.qtdGratis}" min="0" onchange="window.updateGrupo('${g.id}', 'qtdGratis', parseInt(this.value)||0)">
+                            </div>
                         </div>
-                        <div style="background: #e5e7eb; height: 1px; margin: 15px 0;"></div>
-                        <h4 style="font-size: 0.9rem; color: #4b5563;">Itens do Grupo</h4>
-                        ${itensHtml}
-                        <button type="button" class="btn btn-outline" onclick="window.addItemGrupo('${g.id}')" style="margin-top: 15px; font-size: 0.85rem; padding: 5px 10px; border-style: dashed;">+ Adicionar Item ao Grupo</button>
+
+                        <div id="itens-grupo-${g.id}" style="display:flex; flex-direction:column;">
+                            ${itensHtml}
+                        </div>
+
+                        <button type="button" onclick="window.addItemGrupo('${g.id}')" style="width: 100%; margin-top: 5px; padding: 10px; background: transparent; border: 1px dashed #94a3b8; color: #475569; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s;">+ Adicionar Opção</button>
                     </div>
                 `;
             });
@@ -961,7 +976,6 @@
             document.getElementById('form-produto').onsubmit = async (e) => {
                 e.preventDefault();
                 
-                // Validação Básica dos Grupos
                 for (const g of gruposOpcoesList) {
                     if (!g.nome) return window.mostrarNotificacao('Todos os grupos precisam de um nome.', 'erro');
                     for (const i of g.itens) {
@@ -998,7 +1012,7 @@
                     bloquearObs: document.getElementById('check-bloquear-obs').checked,
                     maisVendido: document.getElementById('check-mais-vendido').checked,
                     itensRemoviveis: itensRemoviveisArray,
-                    gruposOpcoes: gruposOpcoesList // SALVA OS GRUPOS AQUI
+                    gruposOpcoes: gruposOpcoesList 
                 };
                 
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
@@ -1061,7 +1075,6 @@
             document.getElementById('check-mais-vendido').checked = p.maisVendido || false;
             document.getElementById('itens-removiveis-prod').value = p.itensRemoviveis ? p.itensRemoviveis.join(', ') : '';
             
-            // Carrega os grupos de opções na edição
             gruposOpcoesList = p.gruposOpcoes ? JSON.parse(JSON.stringify(p.gruposOpcoes)) : [];
             renderGruposOpcoes();
 
@@ -1162,7 +1175,6 @@
             document.getElementById('box-itens-removiveis').classList.add('hidden');
             document.getElementById('itens-removiveis-prod').value = '';
             
-            // Zera os grupos de opções para um produto novo
             gruposOpcoesList = [];
             renderGruposOpcoes();
 
