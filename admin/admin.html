@@ -163,7 +163,7 @@
         <button class="toggle-sidebar" id="toggle-sidebar">☰</button>
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-logo" style="display: flex; flex-direction: column; align-items: center; text-align: center;">
-                <img id="admin-logo-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; display: none;" onerror="this.style.display='none'; document.getElementById('admin-logo-text').style.display='block';">
+                <img id="admin-logo-img" src="" style="width: 120px; height: 120px; border-radius: 50%; object-fit: contain; display: none;" onerror="this.style.display='none'; document.getElementById('admin-logo-text').style.display='block';">
                 <div id="admin-logo-text" style="font-size: 3rem;">⟳</div>
                 <h2 id="nome-loja-sidebar">Carregando...</h2>
             </div>
@@ -189,9 +189,11 @@
                         <h1>📊 Visão Geral</h1>
                         <p style="color: var(--cor-texto-secundario);">Resumo financeiro do período</p>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb;">
-                        <label style="font-weight: 600; font-size: 0.9rem; color: #4b5563;">Data:</label>
-                        <input type="date" id="filtro-data-dashboard" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
+                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb; flex-wrap: wrap;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: #4b5563;">Período:</label>
+                        <input type="date" id="filtro-data-inicial" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
+                        <span style="color: #6b7280; font-weight: 600;">até</span>
+                        <input type="date" id="filtro-data-final" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
                     </div>
                 </div>
 
@@ -508,12 +510,19 @@
         };
 
         let dashSnapshot = null;
+        
+        // --- NOVA FUNÇÃO INIT DASHBOARD (COM DUAS DATAS) ---
         function initDashboard() {
-            const inputDataDashboard = document.getElementById('filtro-data-dashboard');
-            if (!inputDataDashboard.value) {
-                inputDataDashboard.value = new Date().toISOString().split('T')[0];
-            }
-            inputDataDashboard.addEventListener('change', atualizarCardsDashboard);
+            const inputDataInicial = document.getElementById('filtro-data-inicial');
+            const inputDataFinal = document.getElementById('filtro-data-final');
+            
+            const hoje = new Date().toISOString().split('T')[0];
+            
+            if (!inputDataInicial.value) inputDataInicial.value = hoje;
+            if (!inputDataFinal.value) inputDataFinal.value = hoje;
+            
+            inputDataInicial.addEventListener('change', atualizarCardsDashboard);
+            inputDataFinal.addEventListener('change', atualizarCardsDashboard);
 
             getDocs(collection(db, COLLECTIONS.CONFIGURACOES)).then(snap => {
                 if(!snap.empty) {
@@ -533,17 +542,18 @@
             });
         }
 
+        // --- NOVA LÓGICA DE ATUALIZAÇÃO DO DASHBOARD (FILTRO POR PERÍODO) ---
         function atualizarCardsDashboard() {
             if(!dashSnapshot) return;
-            const dataSelecionadaStr = document.getElementById('filtro-data-dashboard').value;
-            let dataRefStr = null;
             
-            if (dataSelecionadaStr) {
-                const [ano, mes, dia] = dataSelecionadaStr.split('-');
-                dataRefStr = new Date(ano, mes - 1, dia).toDateString();
-            } else {
-                dataRefStr = new Date().toDateString(); 
-            }
+            const dataInicialStr = document.getElementById('filtro-data-inicial').value;
+            const dataFinalStr = document.getElementById('filtro-data-final').value;
+            
+            if (!dataInicialStr || !dataFinalStr) return; // Aguarda ter as duas datas
+
+            // Cria objetos Date cobrindo todo o período selecionado
+            const dataInicio = new Date(dataInicialStr + "T00:00:00");
+            const dataFim = new Date(dataFinalStr + "T23:59:59");
 
             let fat = 0, qtd = 0, lista = [];
             
@@ -552,11 +562,17 @@
                 const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
                 const dEntr = p.dataEntregaRealizada?.toDate ? p.dataEntregaRealizada.toDate() : null;
                 
-                if (dCria && dCria.toDateString() === dataRefStr) {
-                    qtd++; lista.push(p);
+                // Verifica se o pedido foi criado dentro do período
+                if (dCria && dCria >= dataInicio && dCria <= dataFim) {
+                    qtd++; 
+                    lista.push(p);
                     fat += p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
                 }
-                if (p.isEncomenda && dEntr && dEntr.toDateString() === dataRefStr && p.status === 'entregue') fat += (p.valorRestante || 0);
+                
+                // Se for encomenda e a entrega for finalizada no período
+                if (p.isEncomenda && dEntr && dEntr >= dataInicio && dEntr <= dataFim && p.status === 'entregue') {
+                    fat += (p.valorRestante || 0);
+                }
             });
 
             document.getElementById('vendas-hoje').textContent = formatarPreco(fat);
@@ -564,17 +580,20 @@
             
             lista.sort((a, b) => b.criadoEm - a.criadoEm);
             let html = '';
-            lista.slice(0, 5).forEach(p => {
+            
+            // Mostra os 10 últimos daquele período na tabela
+            lista.slice(0, 10).forEach(p => {
                 const stColor = p.status === 'entregue' ? '#10b981' : '#f59e0b';
+                const dataFormatada = p.criadoEm.toDate().toLocaleDateString('pt-BR') + ' ' + p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
                 html += `<tr style="border-bottom: 1px solid #f3f4f6;">
                     <td style="padding:1rem;">${p.idDisplay || p.id}</td>
                     <td>${p.cliente?.nome || '-'}</td>
                     <td style="color:${stColor}; font-weight:600;">${p.status}</td>
                     <td>${p.isEncomenda ? 'Sinal 50%' : 'Total'}</td>
-                    <td style="color:#666;">${p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</td>
+                    <td style="color:#666;">${dataFormatada}</td>
                 </tr>`;
             });
-            document.getElementById('tabela-ultimos-pedidos').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:2rem;">Nenhum pedido nesta data.</td></tr>';
+            document.getElementById('tabela-ultimos-pedidos').innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:2rem;">Nenhum pedido neste período.</td></tr>';
         }
 
         let configId = null;
@@ -781,44 +800,33 @@
         }
         window.updSt = async (uid, st) => { await updateDoc(doc(db, COLLECTIONS.PEDIDOS, uid), {status:st, dataEntregaRealizada: st==='entregue'?new Date():null}); window.mostrarNotificacao('Atualizado','sucesso'); };
         
-        // --- NOVA LÓGICA DE EXCLUSÃO DE PEDIDO COM RETORNO DE ESTOQUE ---
         window.delPed = async (uid) => { 
             if(confirm('Tem certeza que deseja excluir este pedido? Se houver produtos controlados por estoque, as quantidades serão devolvidas.')) {
                 try {
-                    // 1. Pega os dados do pedido antes de deletar
                     const pedidoDoc = await getDoc(doc(db, COLLECTIONS.PEDIDOS, uid));
                     
                     if (pedidoDoc.exists()) {
                         const pedidoData = pedidoDoc.data();
                         
-                        // 2. Verifica se tem itens no pedido
                         if (pedidoData.itens && Array.isArray(pedidoData.itens)) {
-                            // 3. Itera sobre cada item do pedido
                             for (const item of pedidoData.itens) {
-                                // A quantidade pode vir como 'qtd' ou 'quantidade'
                                 const quantidadeDevolver = item.qtd || item.quantidade || 1;
                                 
-                                // 4. Pega o documento atual do produto no banco para ver o estoque
                                 const produtoRef = doc(db, COLLECTIONS.PRODUTOS, item.id);
                                 const produtoDoc = await getDoc(produtoRef);
                                 
                                 if (produtoDoc.exists()) {
                                     const produtoData = produtoDoc.data();
                                     
-                                    // 5. Se o produto tem controle de estoque (não é null/undefined)
                                     if (produtoData.estoque !== null && produtoData.estoque !== undefined) {
                                         const novoEstoque = produtoData.estoque + quantidadeDevolver;
-                                        
-                                        // 6. Atualiza o estoque do produto
                                         await updateDoc(produtoRef, { estoque: novoEstoque });
-                                        console.log(`Devolvido ${quantidadeDevolver} unid de ${item.nome} ao estoque.`);
                                     }
                                 }
                             }
                         }
                     }
                     
-                    // 7. Por fim, deleta o pedido
                     await deleteDoc(doc(db, COLLECTIONS.PEDIDOS, uid)); 
                     window.mostrarNotificacao('Pedido excluído com sucesso.', 'sucesso');
                     
@@ -964,7 +972,6 @@
                 snap.forEach(d => {
                     const c = { id: d.id, ...d.data() };
                     
-                    // Cálculo blindado da data local
                     const dataAtual = new Date();
                     const hojeLocal = dataAtual.getFullYear() + '-' + String(dataAtual.getMonth() + 1).padStart(2, '0') + '-' + String(dataAtual.getDate()).padStart(2, '0');
                     
