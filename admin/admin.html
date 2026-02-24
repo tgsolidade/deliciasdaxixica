@@ -113,6 +113,8 @@
         .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn-primario { background-color: #2563eb; color: white; width: 100%; }
         .btn-primario:hover { background-color: #1d4ed8; }
+        .btn-outline { background-color: white; border: 2px solid #2563eb; color: #2563eb; width: 100%; }
+        .btn-outline:hover { background-color: #eff6ff; }
 
         /* Estilo Tabela Cupons */
         .tabela-admin { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -128,11 +130,10 @@
         .toast-erro { background-color: #ef4444; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; overflow-y: auto; padding: 20px 0;}
         .modal-overlay.active { display: flex; }
-        .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
-        @media(min-width: 768px) { .modal { border-radius: 16px; align-self: center; } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal { background: white; width: 100%; max-width: 600px; border-radius: 20px; padding: 20px; animation: slideUp 0.3s ease-out; margin: auto; }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0;} to { transform: translateY(0); opacity: 1;} }
     </style>
 </head>
 <body>
@@ -242,8 +243,8 @@
                 <div class="admin-header">
                     <h1>🍔 Gerenciar Produtos</h1>
                     <div class="header-actions">
-                        <button class="btn btn-outline" id="btn-nova-categoria">🏷️ Categoria</button>
-                        <button class="btn btn-primario" id="btn-novo-produto">➕ Produto</button>
+                        <button class="btn btn-outline" id="btn-nova-categoria" style="width: auto;">🏷️ Categoria</button>
+                        <button class="btn btn-primario" id="btn-novo-produto" style="width: auto;">➕ Produto</button>
                     </div>
                 </div>
                 <div id="loading-produtos" class="flex-center" style="padding: 3rem;"><div class="loading"></div></div>
@@ -256,7 +257,7 @@
                     <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb;">
                         <label style="font-weight: 600; font-size: 0.9rem; color: #4b5563;">Filtrar Dia:</label>
                         <input type="date" id="filtro-data-pedidos" class="form-input" style="padding: 5px; width: auto; font-size: 0.9rem;">
-                        <button class="btn-outline" onclick="document.getElementById('filtro-data-pedidos').value=''; window.renderPedidos();" style="padding: 5px 10px; font-size: 0.8rem; height: 100%;">Ver Todos</button>
+                        <button class="btn-outline" onclick="document.getElementById('filtro-data-pedidos').value=''; window.renderPedidos();" style="padding: 5px 10px; font-size: 0.8rem; height: 100%; width: auto;">Ver Todos</button>
                     </div>
                 </div>
                 <div style="margin-bottom: 2rem;">
@@ -279,7 +280,7 @@
                 <div class="admin-header">
                     <h1>🎫 Cupons de Desconto</h1>
                     <div class="header-actions">
-                        <button class="btn btn-primario" id="btn-novo-cupom">➕ Novo Cupom</button>
+                        <button class="btn btn-primario" id="btn-novo-cupom" style="width: auto;">➕ Novo Cupom</button>
                     </div>
                 </div>
                 <div style="overflow-x: auto;">
@@ -327,7 +328,7 @@
 
     <div class="modal-overlay" id="modal-produto">
         <div class="modal">
-            <div class="modal-header"><h2>Produto</h2><button class="modal-close" onclick="window.fecharModal('modal-produto')">×</button></div>
+            <div class="modal-header"><h2>Produto</h2><button type="button" class="modal-close" onclick="window.fecharModal('modal-produto')">×</button></div>
             <form id="form-produto">
                 <div class="form-group"><label>Categoria</label><select id="cat-prod" class="form-input" required></select></div>
                 <div class="form-group">
@@ -372,22 +373,31 @@
                         Separe por vírgula. Mesmo com a receita fechada, o cliente verá caixinhas para desmarcar esses itens.
                     </small>
                 </div>
+
+                <div id="box-grupos-opcoes" style="margin-top: 30px; border-top: 2px dashed #d1d5db; padding-top: 20px;">
+                    <h3 style="margin-bottom: 10px; color: #1f2937;">🛠️ Grupos de Opções (Complementos, Tamanhos)</h3>
+                    <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 15px;">Adicione regras de tamanho, bordas ou adicionais para este produto.</p>
+                    
+                    <div id="lista-grupos"></div>
+                    
+                    <button type="button" class="btn btn-outline" onclick="window.addGrupoOpcao()" style="margin-top: 10px;">➕ Novo Grupo de Opções</button>
+                </div>
                 
-                <button type="submit" class="btn btn-primario" style="margin-top: 20px;">Salvar</button>
+                <button type="submit" class="btn btn-primario" style="margin-top: 30px;">Salvar Produto Completo</button>
             </form>
         </div>
     </div>
     
     <div class="modal-overlay" id="modal-categoria">
         <div class="modal">
-            <div class="modal-header"><h2>Categoria</h2><button class="modal-close" onclick="window.fecharModal('modal-categoria')">×</button></div>
+            <div class="modal-header"><h2>Categoria</h2><button type="button" class="modal-close" onclick="window.fecharModal('modal-categoria')">×</button></div>
             <form id="form-categoria"><div class="form-group"><input type="text" id="nome-cat" class="form-input" placeholder="Nome da Categoria"></div><button type="submit" class="btn btn-primario">Criar</button></form>
         </div>
     </div>
 
     <div class="modal-overlay" id="modal-cupom">
         <div class="modal">
-            <div class="modal-header"><h2>Novo Cupom</h2><button class="modal-close" onclick="window.fecharModal('modal-cupom')">×</button></div>
+            <div class="modal-header"><h2>Novo Cupom</h2><button type="button" class="modal-close" onclick="window.fecharModal('modal-cupom')">×</button></div>
             <form id="form-cupom">
                 <div class="form-group">
                     <label>Código do Cupom</label>
@@ -547,9 +557,8 @@
             const dataInicialStr = document.getElementById('filtro-data-inicial').value;
             const dataFinalStr = document.getElementById('filtro-data-final').value;
             
-            if (!dataInicialStr || !dataFinalStr) return; // Aguarda ter as duas datas
+            if (!dataInicialStr || !dataFinalStr) return;
 
-            // Cria objetos Date cobrindo todo o período selecionado
             const dataInicio = new Date(dataInicialStr + "T00:00:00");
             const dataFim = new Date(dataFinalStr + "T23:59:59");
 
@@ -560,14 +569,12 @@
                 const dCria = p.criadoEm?.toDate ? p.criadoEm.toDate() : null;
                 const dEntr = p.dataEntregaRealizada?.toDate ? p.dataEntregaRealizada.toDate() : null;
                 
-                // Verifica se o pedido foi criado dentro do período
                 if (dCria && dCria >= dataInicio && dCria <= dataFim) {
                     qtd++; 
                     lista.push(p);
                     fat += p.isEncomenda ? (p.valorSinal || 0) : (p.total || 0);
                 }
                 
-                // Se for encomenda e a entrega for finalizada no período
                 if (p.isEncomenda && dEntr && dEntr >= dataInicio && dEntr <= dataFim && p.status === 'entregue') {
                     fat += (p.valorRestante || 0);
                 }
@@ -579,7 +586,6 @@
             lista.sort((a, b) => b.criadoEm - a.criadoEm);
             let html = '';
             
-            // Mostra TODOS os pedidos do período selecionado na tabela (removemos o .slice)
             lista.forEach(p => {
                 const stColor = p.status === 'entregue' ? '#10b981' : '#f59e0b';
                 const dataFormatada = p.criadoEm.toDate().toLocaleDateString('pt-BR') + ' ' + p.criadoEm.toDate().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -734,8 +740,19 @@
 
                 const itens = p.itens?.map(i => {
                     const quantidade = i.qtd || i.quantidade || 1;
+                    
+                    // NOVA PARTE PARA MOSTRAR OS COMPLEMENTOS NO PEDIDO DO ADMIN
+                    let complementosHtml = '';
+                    if (i.opcoesSelecionadas && Array.isArray(i.opcoesSelecionadas) && i.opcoesSelecionadas.length > 0) {
+                        complementosHtml = i.opcoesSelecionadas.map(op => {
+                            const descrPreco = op.preco > 0 ? ` (+${formatarPreco(op.preco)})` : '';
+                            return `<div style="font-size:0.8rem; color:#4b5563; margin-left: 15px;">+ ${op.nome}${descrPreco}</div>`;
+                        }).join('');
+                    }
+
                     return `<div class="pedido-item"><span>${quantidade}x ${i.nome}</span><span>${formatarPreco((i.preco||0) * quantidade)}</span></div>
-                            ${i.obs ? `<div style="font-size:0.8rem; color:#ef4444; margin-left: 10px;">${i.obs}</div>` : ''}`;
+                            ${complementosHtml}
+                            ${i.obs ? `<div style="font-size:0.8rem; color:#ef4444; margin-left: 10px;">Obs: ${i.obs}</div>` : ''}`;
                 }).join('') || '';
                 
                 let enderecoTexto = '🏪 Retirada no Balcão';
@@ -835,7 +852,86 @@
             }
         };
 
+        // --- SISTEMA DE GRUPOS DE OPÇÕES ---
         let produtosLista = [], cats = [], idEdit = null;
+        let gruposOpcoesList = []; // Guarda os grupos em memória durante a edição do produto
+
+        window.addGrupoOpcao = () => {
+            gruposOpcoesList.push({ id: Date.now().toString(), nome: '', min: 0, max: 1, qtdGratis: 0, itens: [] });
+            renderGruposOpcoes();
+        };
+
+        window.removeGrupo = (id) => {
+            if(confirm('Remover este grupo inteiro?')) {
+                gruposOpcoesList = gruposOpcoesList.filter(g => g.id !== id);
+                renderGruposOpcoes();
+            }
+        };
+
+        window.addItemGrupo = (grupoId) => {
+            const g = gruposOpcoesList.find(x => x.id === grupoId);
+            if(g) { g.itens.push({ id: Date.now().toString(), nome: '', preco: 0, foto: '' }); renderGruposOpcoes(); }
+        };
+
+        window.removeItemGrupo = (grupoId, itemId) => {
+            const g = gruposOpcoesList.find(x => x.id === grupoId);
+            if(g) { g.itens = g.itens.filter(i => i.id !== itemId); renderGruposOpcoes(); }
+        };
+
+        window.updateGrupo = (grupoId, field, value) => {
+            const g = gruposOpcoesList.find(x => x.id === grupoId);
+            if(g) g[field] = value;
+        };
+
+        window.updateItemGrupo = (grupoId, itemId, field, value) => {
+            const g = gruposOpcoesList.find(x => x.id === grupoId);
+            if(g) {
+                const item = g.itens.find(i => i.id === itemId);
+                if(item) item[field] = value;
+            }
+        };
+
+        function renderGruposOpcoes() {
+            const container = document.getElementById('lista-grupos');
+            container.innerHTML = '';
+            
+            if (gruposOpcoesList.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 10px;">Nenhum grupo criado.</div>';
+                return;
+            }
+
+            gruposOpcoesList.forEach((g) => {
+                let itensHtml = '';
+                g.itens.forEach((item) => {
+                    itensHtml += `
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px; background: white; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; flex-wrap: wrap;">
+                            <input type="text" class="form-input" placeholder="Nome (Ex: Bacon)" value="${item.nome}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'nome', this.value)" style="flex: 2; min-width: 150px;">
+                            <input type="number" class="form-input" placeholder="Preço Extra" step="0.01" value="${item.preco}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'preco', parseFloat(this.value)||0)" style="flex: 1; min-width: 100px;">
+                            <input type="url" class="form-input" placeholder="URL Foto (Opcional)" value="${item.foto}" onchange="window.updateItemGrupo('${g.id}', '${item.id}', 'foto', this.value)" style="flex: 2; min-width: 150px;">
+                            <button type="button" class="btn-excluir" onclick="window.removeItemGrupo('${g.id}', '${item.id}')" style="opacity: 1; color: #ef4444; width: 40px;">🗑️</button>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                            <input type="text" class="form-input" placeholder="Nome do Grupo (Ex: Escolha a Borda)" value="${g.nome}" onchange="window.updateGrupo('${g.id}', 'nome', this.value)" style="font-weight: bold; width: 100%; max-width: 400px;" required>
+                            <button type="button" class="btn-outline" onclick="window.removeGrupo('${g.id}')" style="color: #ef4444; border-color: #ef4444; width: auto; padding: 5px 10px; font-size: 0.85rem;">Remover Grupo</button>
+                        </div>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Mínimo (0=Opcional)</label><input type="number" class="form-input" value="${g.min}" min="0" onchange="window.updateGrupo('${g.id}', 'min', parseInt(this.value)||0)"></div>
+                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Máximo de Escolhas</label><input type="number" class="form-input" value="${g.max}" min="1" onchange="window.updateGrupo('${g.id}', 'max', parseInt(this.value)||1)"></div>
+                            <div style="flex: 1; min-width: 100px;"><label style="font-size: 0.8rem; font-weight:600;">Qtd Grátis</label><input type="number" class="form-input" value="${g.qtdGratis}" min="0" onchange="window.updateGrupo('${g.id}', 'qtdGratis', parseInt(this.value)||0)"></div>
+                        </div>
+                        <div style="background: #e5e7eb; height: 1px; margin: 15px 0;"></div>
+                        <h4 style="font-size: 0.9rem; color: #4b5563;">Itens do Grupo</h4>
+                        ${itensHtml}
+                        <button type="button" class="btn btn-outline" onclick="window.addItemGrupo('${g.id}')" style="margin-top: 15px; font-size: 0.85rem; padding: 5px 10px; border-style: dashed;">+ Adicionar Item ao Grupo</button>
+                    </div>
+                `;
+            });
+        }
 
         function converterUrlImagem(url) {
             if (!url) return url;
@@ -865,6 +961,14 @@
             document.getElementById('form-produto').onsubmit = async (e) => {
                 e.preventDefault();
                 
+                // Validação Básica dos Grupos
+                for (const g of gruposOpcoesList) {
+                    if (!g.nome) return window.mostrarNotificacao('Todos os grupos precisam de um nome.', 'erro');
+                    for (const i of g.itens) {
+                        if (!i.nome) return window.mostrarNotificacao(`O item de um grupo está sem nome.`, 'erro');
+                    }
+                }
+
                 const vEstoque = document.getElementById('estoque-prod').value;
                 const urlBruta = document.getElementById('img-prod').value;
                 
@@ -893,12 +997,14 @@
                     estoque: vEstoque ? parseInt(vEstoque) : null,
                     bloquearObs: document.getElementById('check-bloquear-obs').checked,
                     maisVendido: document.getElementById('check-mais-vendido').checked,
-                    itensRemoviveis: itensRemoviveisArray
+                    itensRemoviveis: itensRemoviveisArray,
+                    gruposOpcoes: gruposOpcoesList // SALVA OS GRUPOS AQUI
                 };
                 
                 if(idEdit) await updateDoc(doc(db, COLLECTIONS.PRODUTOS, idEdit), d);
                 else await addDoc(collection(db, COLLECTIONS.PRODUTOS), {...d, criadoEm: new Date()});
-                window.mostrarNotificacao('Salvo','sucesso'); window.fecharModal('modal-produto');
+                window.mostrarNotificacao('Produto salvo!','sucesso'); 
+                window.fecharModal('modal-produto');
             };
             document.getElementById('form-categoria').onsubmit = async (e) => { e.preventDefault(); await addDoc(collection(db,'categorias'), {nome: document.getElementById('nome-cat').value, slug: document.getElementById('nome-cat').value.toLowerCase()}); window.fecharModal('modal-categoria'); };
         }
@@ -921,6 +1027,8 @@
 
                     const infoObs = p.bloquearObs ? `<div style="font-size:0.75rem; color:#ef4444; margin-top:2px;">⚠️ Receita Fechada</div>` : '';
                     const tagMaisVendido = p.maisVendido ? `<div style="font-size:0.75rem; color:#ea580c; font-weight:bold; margin-top:2px;">🔥 Mais Vendido</div>` : '';
+                    
+                    const infoGrupos = (p.gruposOpcoes && p.gruposOpcoes.length > 0) ? `<div style="font-size:0.75rem; color:#2563eb; margin-top:2px; font-weight: bold;">🛠️ Possui Opções/Complementos</div>` : '';
 
                     card.innerHTML = `
                     <img src="${p.imagemUrl}" class="produto-admin-imagem" onerror="this.src='https://placehold.co/100?text=Foto'">
@@ -930,6 +1038,7 @@
                         ${infoEstoque}
                         ${infoObs}
                         ${tagMaisVendido}
+                        ${infoGrupos}
                     </div>
                     <div class="produto-admin-acoes">
                         <button class="btn-icon" onclick="window.editProd('${p.id}')">✏️</button>
@@ -952,6 +1061,10 @@
             document.getElementById('check-mais-vendido').checked = p.maisVendido || false;
             document.getElementById('itens-removiveis-prod').value = p.itensRemoviveis ? p.itensRemoviveis.join(', ') : '';
             
+            // Carrega os grupos de opções na edição
+            gruposOpcoesList = p.gruposOpcoes ? JSON.parse(JSON.stringify(p.gruposOpcoes)) : [];
+            renderGruposOpcoes();
+
             document.getElementById('box-promo').classList.toggle('hidden', !p.emPromocao);
             document.getElementById('box-estoque').classList.remove('hidden');
             document.getElementById('box-itens-removiveis').classList.toggle('hidden', !p.bloquearObs);
@@ -1048,6 +1161,10 @@
             document.getElementById('check-mais-vendido').checked = false;
             document.getElementById('box-itens-removiveis').classList.add('hidden');
             document.getElementById('itens-removiveis-prod').value = '';
+            
+            // Zera os grupos de opções para um produto novo
+            gruposOpcoesList = [];
+            renderGruposOpcoes();
 
             document.getElementById('modal-produto').classList.add('active'); 
         };
