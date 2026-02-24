@@ -87,11 +87,11 @@
         .whats-float:hover { transform: scale(1.1); }
         .whats-float img { width: 35px; height: 35px; }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: none; align-items: flex-end; justify-content: center; overflow-y: auto; padding: 20px 0;}
         .modal-overlay.active { display: flex; }
-        .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; }
+        .modal { background: white; width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 20px; animation: slideUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; margin: auto; }
         @media(min-width: 768px) { .modal { border-radius: 16px; align-self: center; } }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0;} to { transform: translateY(0); opacity: 1;} }
 
         .btn-novo-end { background: none; border: 1px solid #ddd; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; color: #666; cursor: pointer; float: right; }
         
@@ -313,7 +313,8 @@
     </a>
 
     <div class="modal-overlay" id="modal-produto" onclick="if(event.target===this) fecharModal('modal-produto')">
-        <div class="modal" style="padding-bottom: 100px; position: relative;"> <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+        <div class="modal" style="padding-bottom: 100px; position: relative;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                 <h2 id="md-titulo" style="font-size:1.3rem; line-height:1.2;">...</h2>
                 <button onclick="fecharModal('modal-produto')" style="background:none; border:none; font-size:1.5rem;">×</button>
             </div>
@@ -331,12 +332,19 @@
 
             <div id="md-grupos-opcoes"></div>
 
-            <div id="md-encomenda-opt" class="hidden" style="background:#eff6ff; padding:10px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:15px;">
-                <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#1e40af;">
-                    <input type="checkbox" id="md-check-enc" onchange="toggleAgendamento(this)"> Agendar Entrega
+            <div id="md-encomenda-opt" class="hidden" style="background:#eff6ff; padding:15px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:15px;">
+                <label style="display:block; font-size:0.95rem; font-weight:700; color:#1e40af; margin-bottom: 10px;">
+                    📅 Data e Hora da Encomenda
                 </label>
-                <div id="md-agendamento" class="hidden" style="margin-top:10px; display:grid; gap:8px;">
-                    <input type="date" id="md-data" class="form-input"><input type="time" id="md-hora" class="form-input">
+                <div style="display:grid; gap:10px; grid-template-columns: 1fr 1fr;">
+                    <div>
+                        <label style="font-size:0.75rem; color:#3b82f6; font-weight:600;">Data</label>
+                        <input type="date" id="md-data" class="form-input" style="border-color:#bfdbfe;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem; color:#3b82f6; font-weight:600;">Hora</label>
+                        <input type="time" id="md-hora" class="form-input" style="border-color:#bfdbfe;">
+                    </div>
                 </div>
             </div>
             
@@ -397,7 +405,7 @@
         let rastreioListeners = [];
         let cupomAplicado = null; 
         
-        let extraTotalGrupos = 0; // Guarda a soma dos adicionais
+        let extraTotalGrupos = 0; 
 
         document.addEventListener('DOMContentLoaded', () => {
             initListeners();
@@ -532,8 +540,42 @@
                 abrirModalProduto(p);
             };
 
-            const preco = (p.emPromocao && p.precoPromocional) ? p.precoPromocional : p.preco;
-            const precoHtml = (p.emPromocao && p.precoPromocional) ? `<span class="preco-antigo">${formatarPreco(p.preco)}</span> <span class="preco-novo">${formatarPreco(preco)}</span>` : formatarPreco(preco);
+            // LÓGICA DE PREÇO "A PARTIR DE"
+            let precoBaseNormal = p.preco || 0;
+            let precoBasePromo = (p.emPromocao && p.precoPromocional) ? p.precoPromocional : precoBaseNormal;
+            
+            let precoMinimoOpcoes = 0;
+            let temOpcoes = p.gruposOpcoes && p.gruposOpcoes.length > 0;
+
+            if (temOpcoes) {
+                p.gruposOpcoes.forEach(g => {
+                    if (g.min > 0 && g.itens && g.itens.length > 0) {
+                        const precos = g.itens.map(i => i.preco || 0).sort((a,b) => a-b);
+                        let cobrados = precos;
+                        if (g.qtdGratis > 0) {
+                            cobrados = precos.slice(g.qtdGratis);
+                        }
+                        let custoMinimo = 0;
+                        for(let i=0; i<g.min; i++) {
+                            if(cobrados[i] !== undefined) custoMinimo += cobrados[i];
+                        }
+                        precoMinimoOpcoes += custoMinimo;
+                    }
+                });
+            }
+
+            const precoExibicaoNormal = precoBaseNormal + precoMinimoOpcoes;
+            const precoExibicaoFinal = precoBasePromo + precoMinimoOpcoes;
+
+            const prefixoHtml = temOpcoes ? '<div style="font-size: 0.75rem; color: #6b7280; font-weight: 600; line-height: 1; margin-bottom: 2px;">A partir de</div>' : '';
+            
+            let precoHtml = '';
+            if (p.emPromocao && p.precoPromocional) {
+                precoHtml = `${prefixoHtml}<span class="preco-antigo">${formatarPreco(precoExibicaoNormal)}</span> <span class="preco-novo">${formatarPreco(precoExibicaoFinal)}</span>`;
+            } else {
+                precoHtml = `${prefixoHtml}<span class="produto-preco">${formatarPreco(precoExibicaoFinal)}</span>`;
+            }
+
             const badgeEnc = p.sobEncomenda ? '<span class="badge-encomenda">ENCOMENDA</span>' : '';
             const badgeMaisVendido = p.maisVendido ? '<span class="badge-destaque">🔥 MAIS VENDIDO</span>' : '';
             const tagEsg = isEsgotado ? '<span class="tag-esgotado">Esgotado</span>' : '';
@@ -545,7 +587,7 @@
                 tagEstoque = `<span class="${classeEstoque}">${txtEstoque}</span>`;
             }
 
-            div.innerHTML = `${badgeMaisVendido}${badgeEnc}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3>${tagEsg}${tagEstoque}<p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div class="produto-preco">${precoHtml}</div><button class="btn-add">${btnTexto}</button></div></div>`;
+            div.innerHTML = `${badgeMaisVendido}${badgeEnc}<img src="${p.imagemUrl}" class="produto-imagem" onerror="this.src='https://placehold.co/200?text=Foto'"><div class="produto-info"><h3 class="produto-titulo">${p.nome}</h3>${tagEsg}${tagEstoque}<p class="produto-descricao">${p.descricao || ''}</p><div class="produto-footer"><div style="display:flex; flex-direction:column; justify-content:center;">${precoHtml}</div><button class="btn-add">${btnTexto}</button></div></div>`;
             return div;
         }
 
@@ -610,17 +652,26 @@
                 boxRemoviveis.classList.add('hidden');
             }
             
-            if(p.sobEncomenda) { document.getElementById('md-encomenda-opt').classList.remove('hidden'); document.getElementById('md-check-enc').checked = false; document.getElementById('md-agendamento').classList.add('hidden'); } else { document.getElementById('md-encomenda-opt').classList.add('hidden'); }
+            // EXIBIÇÃO ABERTA DO AGENDAMENTO SE FOR ENCOMENDA
+            if(p.sobEncomenda) { 
+                document.getElementById('md-encomenda-opt').classList.remove('hidden'); 
+                const d = new Date(); 
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                document.getElementById('md-data').min = d.toISOString().split('T')[0]; 
+                document.getElementById('md-data').value = ''; 
+                document.getElementById('md-hora').value = ''; 
+            } else { 
+                document.getElementById('md-encomenda-opt').classList.add('hidden'); 
+            }
             
             renderizarGruposOpcoes(p.gruposOpcoes);
             
             atualizarPrecoModal(); 
-            validarObrigatorios(); // Checa se pode liberar o botão ao abrir
+            validarObrigatorios(); 
             
             document.getElementById('modal-produto').classList.add('active');
         };
 
-        // --- LÓGICA GRUPOS DE OPÇÕES NO CARDÁPIO ---
         function renderizarGruposOpcoes(grupos) {
             const container = document.getElementById('md-grupos-opcoes');
             container.innerHTML = '';
@@ -677,7 +728,6 @@
             
             extraTotalGrupos = 0;
 
-            // Percorre cada grupo renderizado para calcular os limites e preços
             document.querySelectorAll('.grupo-opcoes').forEach(grupoDiv => {
                 const max = parseInt(grupoDiv.getAttribute('data-max'));
                 const qtdGratis = parseInt(grupoDiv.getAttribute('data-gratis'));
@@ -685,7 +735,6 @@
                 const inputsChecks = Array.from(grupoDiv.querySelectorAll('.opt-input:checked'));
                 const allInputs = Array.from(grupoDiv.querySelectorAll('.opt-input'));
 
-                // Trava visual de limite máximo (desabilita os outros checkboxes se atingir o max)
                 if (max > 1) {
                     if (inputsChecks.length >= max) {
                         allInputs.forEach(inp => { if (!inp.checked) inp.disabled = true; });
@@ -694,19 +743,14 @@
                     }
                 }
 
-                // Cálculo de preço aplicando regra de gratuidade
                 let precosSelecionados = inputsChecks.map(inp => parseFloat(inp.getAttribute('data-preco')) || 0);
-                
-                // Ordena do menor pro maior para que os itens mais baratos sejam os gratuitos
                 precosSelecionados.sort((a, b) => a - b);
                 
                 let cobrados = precosSelecionados;
                 if (qtdGratis > 0 && precosSelecionados.length > 0) {
-                    // Remove os N primeiros itens da lista (que são os mais baratos por conta do sort)
                     cobrados = precosSelecionados.slice(qtdGratis);
                 }
 
-                // Soma o que restou para ser cobrado
                 cobrados.forEach(p => extraTotalGrupos += p);
             });
 
@@ -730,7 +774,7 @@
                 btnAdd.style.background = '#9ca3af';
             } else {
                 btnAdd.style.background = 'var(--cor-primaria)';
-                atualizarPrecoModal(); // Volta o texto normal
+                atualizarPrecoModal(); 
             }
         }
 
@@ -750,7 +794,7 @@
 
         function atualizarPrecoModal() {
             const btnAdd = document.getElementById('btn-add-produto');
-            if(btnAdd.disabled) return; // Se tiver desabilitado pela trava, não mexe no texto
+            if(btnAdd.disabled) return; 
 
             const precoBase = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
             const precoUnitarioFinal = precoBase + extraTotalGrupos;
@@ -760,9 +804,13 @@
         }
 
         window.addCarrinho = () => {
-            const isAgendado = document.getElementById('md-check-enc').checked;
             let agendamento = null;
-            if(isAgendado) { const data = document.getElementById('md-data').value; const hora = document.getElementById('md-hora').value; if(!data || !hora) return mostrarNotificacao('Informe data e hora!', 'erro'); agendamento = { data, hora }; }
+            if(prodSel.sobEncomenda) { 
+                const data = document.getElementById('md-data').value; 
+                const hora = document.getElementById('md-hora').value; 
+                if(!data || !hora) return mostrarNotificacao('Informe a data e a hora da encomenda!', 'erro'); 
+                agendamento = { data, hora }; 
+            }
             
             const precoBaseNormal = prodSel.preco;
             const precoBaseDesconto = (prodSel.emPromocao && prodSel.precoPromocional) ? prodSel.precoPromocional : prodSel.preco;
@@ -778,7 +826,6 @@
                 }
             }
 
-            // Coletar as opções marcadas para salvar no carrinho
             let opcoesSelecionadas = [];
             document.querySelectorAll('.grupo-opcoes').forEach(grupoDiv => {
                 const inputsChecks = Array.from(grupoDiv.querySelectorAll('.opt-input:checked'));
@@ -807,7 +854,7 @@
                 obs: obsFinal, 
                 sobEncomenda: prodSel.sobEncomenda || false, 
                 agendamento: agendamento,
-                opcoesSelecionadas: opcoesSelecionadas // SALVANDO OS ADICIONAIS AQUI
+                opcoesSelecionadas: opcoesSelecionadas 
             });
             salvarCarrinho(); fecharModal('modal-produto'); mostrarNotificacao('Adicionado!', 'sucesso');
         };
@@ -840,7 +887,6 @@
                         let enc = item.sobEncomenda ? '<small style="color:#2563eb;">(Enc)</small>' : '';
                         const q = item.qtd || item.quantidade || 1;
                         
-                        // Renderiza os adicionais no carrinho lateral
                         let adicionaisHtml = '';
                         if (item.opcoesSelecionadas && item.opcoesSelecionadas.length > 0) {
                             adicionaisHtml = `<div style="font-size:0.75rem; color:#6b7280; margin-top:2px;">` + 
@@ -898,7 +944,6 @@
             atualizarResumoCheckout(); 
         };
 
-        // --- SISTEMA DINÂMICO DE BOTÕES DE PAGAMENTO ---
         window.selPag = (t, el) => { 
             pagSel = t; 
             document.querySelectorAll('.pagamento-option').forEach(e => e.classList.remove('selected')); 
@@ -1119,7 +1164,6 @@
                 if(i.sobEncomenda) msg += ` (Enc)`;
                 msg += `\n`;
                 
-                // ADD OS GRUPOS DE OPÇÕES NO TEXTO DO ZAP
                 if (i.opcoesSelecionadas && i.opcoesSelecionadas.length > 0) {
                     i.opcoesSelecionadas.forEach(op => {
                         const precoStr = op.preco > 0 ? ` (+${formatarPreco(op.preco)})` : '';
@@ -1128,7 +1172,7 @@
                 }
 
                 if(i.obs) msg += `   _Obs: ${i.obs}_\n`;
-                if(i.agendamento) msg += `   📅 *Agendado:* ${new Date(i.agendamento.data+'T00:00:00').toLocaleDateString()} às ${i.agendamento.hora}\n`;
+                if(i.agendamento) msg += `   📅 *Agendado para:* ${new Date(i.agendamento.data+'T00:00:00').toLocaleDateString()} às ${i.agendamento.hora}\n`;
             });
 
             if (p.cupom) {
